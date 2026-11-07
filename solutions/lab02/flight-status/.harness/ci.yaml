@@ -31,3 +31,13 @@ spec:
           script: |
             . .venv/bin/activate
             pytest
+      - name: report
+        type: run
+        when: always()
+        spec:
+          container: alpine:3.20
+          script: |
+            echo "Build number: ${{ build.number }}"
+            echo "Commit:       ${{ build.commit }}"
+            echo "Event:        ${{ build.event }}"
+            echo "Branch:       ${{ build.target }}"
