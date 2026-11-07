@@ -1,3 +1,90 @@
-# Project Name
+# Intermediate DevOps
 
-A new project initialized by repo-init.
+A three-day, hands-on course on continuous integration, infrastructure as code, credential management, containers, Kubernetes and continuous delivery. You build and run every part of a delivery pipeline yourself, on your own Linux lab machine, with Harness Open Source, Docker, a local Kubernetes cluster (k3d) and Terraform.
+
+The course follows one application through all three days: **flight-status**, a small Python web API that tracks flights and their status. On Day 1 you put it under continuous integration. On Day 2 you build its environments with Terraform and manage the credentials that the pipeline needs. On Day 3 you package it as a container, run it on Kubernetes and deliver it to a development and a production environment with one pipeline.
+
+## Course outline
+
+**Day 1: Continuous integration**
+
+- Lecture: DevOps foundations
+- Lecture: Version control and continuous integration
+- [Lab 01: Lab environment and Harness Open Source](labs/01-lab-environment.md)
+- Lecture: Pipelines and Harness
+- [Lab 02: Your first CI pipeline](labs/02-first-ci-pipeline.md)
+- Lecture: Testing and quality gates
+- [Lab 03: Quality gates, pull requests and integration tests](labs/03-quality-gates.md)
+
+**Day 2: Infrastructure as code and credentials**
+
+- Lecture: Infrastructure as code concepts
+- Lecture: Terraform, CloudFormation and the CDK
+- [Lab 04: Terraform foundations on Kubernetes](labs/04-terraform-foundations.md)
+- Lecture: Infrastructure as code in pipelines
+- [Lab 05: Terraform in the pipeline](labs/05-terraform-pipeline.md)
+- Lecture: Credential management
+- [Lab 06: Managing credentials](labs/06-credentials.md)
+
+**Day 3: Containers, Kubernetes and continuous delivery**
+
+- Lecture: Containers
+- Lecture: Compose, Amazon ECS and Fargate
+- [Lab 07: Build, scan and describe a container](labs/07-containers.md)
+- Lecture: Kubernetes
+- [Lab 08: Kubernetes deployments, rollouts and rollbacks](labs/08-kubernetes-rollouts.md)
+- Lecture: Continuous delivery
+- [Lab 09: End-to-end delivery pipeline](labs/09-end-to-end-delivery.md)
+
+The lecture slides (PDF) are in [`slides/`](slides/): [Day 1](slides/day1.pdf), [Day 2](slides/day2.pdf) and [Day 3](slides/day3.pdf).
+
+## Your lab machine
+
+Each participant gets one Linux virtual machine, provided by the instructor. You do not install or set anything up before class.
+
+The machine has:
+
+- Ubuntu 24.04 LTS with a desktop and a web browser
+- 8 vCPUs, 16 GB RAM, 80 GB disk
+- A user with `sudo` rights and outbound internet access
+
+Nothing else is installed in advance. You install every tool during the labs, and each lab explains what a tool does before you install it.
+
+| Tool | Version | Installed in |
+|---|---|---|
+| git, curl, jq, VS Code | Ubuntu and Microsoft packages | Lab 01 |
+| Docker Engine | 29.x | Lab 01 |
+| Harness Open Source | 3.3.0 | Lab 01 |
+| k3d (k3s v1.34) | 5.9.0 | Lab 04 |
+| kubectl | 1.34 | Lab 04 |
+| Terraform | 1.17.0 | Lab 04 |
+| Trivy | 0.75.0 | Lab 07 |
+
+No AWS or Harness accounts are needed. The local Kubernetes cluster stands in for Amazon EKS. Docker Compose and an ECS task definition file stand in for Amazon ECS on Fargate. The lectures explain how each local piece maps to the services and to the Harness platform used at United.
+
+## Getting started
+
+Open [Lab 01](labs/01-lab-environment.md) in the browser on your lab machine and follow it from the top. Lab 01 installs git and clones this repository to `~/intermediate-devops-companion`.
+
+## If you fall behind or start on a new machine
+
+The labs build on each other. If you join late, or your machine is replaced, the catch-up script brings a fresh machine to the start of any lab. It replays the earlier labs and checks each result.
+
+```bash
+sudo apt-get update && sudo apt-get install -y git
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 04
+```
+
+Replace `04` with the number of the lab you want to start. The script is meant for a machine where you have not started the labs.
+
+## What is in this repository
+
+| Path | Contents |
+|---|---|
+| `labs/` | The nine lab guides |
+| `app/` | The starter flight-status application with its tests |
+| `solutions/` | Reference files for each lab (`solutions/labNN/...`) |
+| `slides/` | Lecture slides for each day (PDF) |
+| `scripts/` | `catch-up.sh` brings a fresh machine to the start of a lab, using the `labNN-catch-up.sh` scripts |
+| `tests/` | The runner that executes the labs end to end (`tests/run-lab.py`) |
