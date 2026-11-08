@@ -8,7 +8,7 @@ variable "deployer_token_versions" {
   description = "Version of each environment's deployer token. Increase it to rotate the token."
   type        = map(number)
   default = {
-    dev  = 1
+    dev  = 2
     prod = 1
   }
 }

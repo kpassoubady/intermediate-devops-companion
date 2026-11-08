@@ -60,6 +60,9 @@ Nothing else is installed in advance. You install every tool during the labs, an
 | Terraform | 1.17.0 | Lab 04 |
 | Trivy | 0.75.0 | Lab 07 |
 
+> [!NOTE]
+> Tool versions may have changed slightly since this list was written. If a lab installs a slightly newer version on your machine, that is fine — follow the lab as written and proceed.
+
 No AWS or Harness accounts are needed. The local Kubernetes cluster stands in for Amazon EKS. Docker Compose and an ECS task definition file stand in for Amazon ECS on Fargate. The lectures explain how each local piece maps to the services and to the Harness platform used at United.
 
 ## Getting started

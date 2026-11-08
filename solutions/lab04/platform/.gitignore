@@ -1,0 +1,5 @@
+# Terraform working files and state. The state holds the generated database
+# passwords, so it never goes into Git.
+.terraform/
+*.tfstate
+*.tfstate.*
