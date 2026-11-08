@@ -228,11 +228,23 @@ h_wait flightops/flight-status ci success
 
 Open the execution and select each step to see its log.
 
-
 <!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/03-view_execution-1.png" alt="Open the pipeline run">
+<img src="img/02-first-ci-pipeline/pipeline-executions.png" alt="Executions list of the ci pipeline: run 1 failed after 0s (1), run 2 succeeded (2), run 3 'Add the CI pipeline' succeeded (3)">
+
+<img src="img/02-first-ci-pipeline/pipeline-execution-result.png" alt="Execution 3 of the ci pipeline with the clone, install, lint and test steps green. The test step (1) shows the summary 44 passed, 6 skipped (2)">
 
 <!-- shots:end -->
+
+Your run does not have to be green the first time. A red run is normal, so read the log of the failed step and do not give up. Here, run 1 failed after 0s. Runs 2 and 3 passed once the cause was fixed.
+
+If your run fails, use an LLM (Claude, ChatGPT, Copilot or similar) to troubleshoot it, and repeat until you see green:
+
+1. Open the failed step and copy the error message from its log.
+2. Paste it into the LLM with your `.harness/ci.yaml` and the command or lab step that you were on. Ask for the cause and a fix.
+3. Apply the fix. If it changes `.harness/ci.yaml`, commit and push it, then run the pipeline again.
+4. Check the new run. If it is still red, give the LLM the new error and repeat.
+
+Check the [Troubleshooting](#troubleshooting) section first, because it lists the common failures. For example, if every step fails at 0s with `Error response from daemon: client version 1.41 is too old`, follow the fix for that error.
 
 <!-- ui: view_execution flightops/flight-status ci -->
 
@@ -255,7 +267,8 @@ The `sed` command below edits `rules.py`, so that a flight may go from SCHEDULED
 
 ```bash
 cd ~/flight-status
-sed -i 's/S.SCHEDULED: {S.BOARDING, S.DELAYED, S.CANCELLED},/S.SCHEDULED: {S.BOARDING, S.DELAYED, S.CANCELLED, S.ARRIVED},/' flightstatus/rules.py
+sed -i.bak 's/S.SCHEDULED: {S.BOARDING, S.DELAYED, S.CANCELLED},/S.SCHEDULED: {S.BOARDING, S.DELAYED, S.CANCELLED, S.ARRIVED},/' flightstatus/rules.py
+rm flightstatus/rules.py.bak
 git diff
 ```
 
@@ -278,13 +291,6 @@ git push
 Run the pipeline again from Harness: **Run**, branch `main`. There is no trigger yet, so a push does not start a run by itself.
 
 
-<!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/04-run_pipeline-1.png" alt="Run the pipeline, step 1 of 2">
-
-<img src="img/02-first-ci-pipeline/04-run_pipeline-2.png" alt="Run the pipeline, step 2 of 2">
-
-<!-- shots:end -->
-
 <!-- ui: run_pipeline flightops/flight-status ci main -->
 
 <!-- test
@@ -294,6 +300,8 @@ h_log flightops/flight-status ci test | grep -q 'test_forbidden_transitions'
 
 Open the run. The **test** step is red. If more steps followed it, Harness would skip them.
 
+<img src="img/02-first-ci-pipeline/run-open-test-failure.png" alt="Execution 4 of the ci pipeline: clone, install and lint are green and the test step (1) is red and expanded, showing the pytest log with F marks in tests/api/test_api.py and tests/unit/test_rules.py">
+
 Read the log of **test** from the bottom up. The last lines summarize the result:
 
 ```text
@@ -302,6 +310,8 @@ FAILED tests/unit/test_rules.py::test_forbidden_transitions[SCHEDULED-ARRIVED] -
 FAILED tests/unit/test_rules.py::test_forbidden_update_raises_with_reason - Failed: DID NOT RAISE InvalidTransition
 3 failed, 41 passed, 6 skipped in 0.40s
 ```
+
+<img src="img/02-first-ci-pipeline/scroll-down-to-see-the-failure.png" alt="The test log scrolled to the bottom: the arrow points at the FAILED line for test_forbidden_status_update_returns_409 (assert 200 == 409), followed by the two unit test failures and the line 3 failed, 41 passed, 6 skipped">
 
 Then scroll up to the details of each failure. pytest shows the test function, the `assert` line that failed, and the values it compared.
 
@@ -327,10 +337,7 @@ Run the pipeline again from Harness. It is green again.
 
 
 <!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/05-run_pipeline-1.png" alt="Run the pipeline, step 1 of 2">
-
-<img src="img/02-first-ci-pipeline/05-run_pipeline-2.png" alt="Run the pipeline, step 2 of 2">
-
+<img src="img/02-first-ci-pipeline/run-after-reverting.png" alt="Run after reverting">
 <!-- shots:end -->
 
 <!-- ui: run_pipeline flightops/flight-status ci main -->
@@ -345,22 +352,22 @@ h_wait flightops/flight-status ci success
 
 Continuous integration means that every change is checked, without anyone having to remember to select **Run**. A trigger starts a pipeline when an event happens in the repository. When you create a pipeline, Harness adds a default trigger for pull request events. You add a trigger for pushes.
 
-In the `ci` pipeline, open its settings (**Settings**), then the **Triggers** tab, and select **New Trigger**. Name it `push`, select the event **Branch updated**, and create it.
-
+Open the `ci` pipeline and select **Pipeline Settings** (1).
 
 <!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/06-add_trigger-1.png" alt="Add the trigger, step 1 of 6">
+<img src="img/02-first-ci-pipeline/pipeline-settings.png" alt="Executions page of the ci pipeline with the Pipeline Settings button (1)">
+<!-- shots:end -->
 
-<img src="img/02-first-ci-pipeline/06-add_trigger-2.png" alt="Add the trigger, step 2 of 6">
+On the **ci settings** page, open the **Triggers** tab (1) and select **New Trigger** (2). The list already shows the `default` trigger.
 
-<img src="img/02-first-ci-pipeline/06-add_trigger-3.png" alt="Add the trigger, step 3 of 6">
+<!-- shots:begin -->
+<img src="img/02-first-ci-pipeline/click-new-trigger.png" alt="ci settings page: (1) Triggers tab, (2) New Trigger button">
+<!-- shots:end -->
 
-<img src="img/02-first-ci-pipeline/06-add_trigger-4.png" alt="Add the trigger, step 4 of 6">
+In the **Create a Trigger** dialog, enter the name `push` (1), select the action **Branch Updated** (2), and select **Create** (3).
 
-<img src="img/02-first-ci-pipeline/06-add_trigger-5.png" alt="Add the trigger, step 5 of 6">
-
-<img src="img/02-first-ci-pipeline/06-add_trigger-6.png" alt="Add the trigger, step 6 of 6">
-
+<!-- shots:begin -->
+<img src="img/02-first-ci-pipeline/fill-create-a-trigger.png" alt="Create a Trigger dialog: (1) Name push, (2) Branch Updated action, (3) Create">
 <!-- shots:end -->
 
 <!-- ui: add_trigger flightops/flight-status ci push branch_updated -->
@@ -383,7 +390,13 @@ git commit -am "Describe the CI pipeline in the README"
 git push
 ```
 
-Open **Pipelines** > **ci** in Harness. A new execution starts within a few seconds, without a click. Its details show that a push started it.
+Screenshot of the execution:
+
+<img src="img/02-first-ci-pipeline/readme-changes.png" alt="Terminal running the README append, git commit and git push; the commit 5d5a46a is pushed from cd8fe94 to main">
+
+Open **Pipelines** > **ci** in Harness. A new execution starts within a few seconds, without a click. Its details show that a push started it. In the **Executions** list, the new run (1) is named after the commit message and shows that you pushed to `main`.
+
+<img src="img/02-first-ci-pipeline/execution-finished-for-readme-change.png" alt="Executions page of the ci pipeline: (1) run 6 'Describe the CI pipeline in the README' succeeded, started by a push to main">
 
 <!-- test
 h_wait flightops/flight-status ci success
@@ -463,11 +476,17 @@ h_wait flightops/flight-status ci success
 h_log flightops/flight-status ci report | grep -q 'Event: *push'
 -->
 
-Open the run and the log of **report**. You should see values similar to these:
+Select the run **Report build information at the end of each run** (1) in the **Executions** list of the **ci** pipeline.
+
+<img src="img/02-first-ci-pipeline/open-the-last-run-report-build.png" alt="Executions page of the ci pipeline: (1) run 7 'Report build information at the end of each run', pushed to main">
+
+Open the **build** stage (1) and expand the **report** step. The **Commit** line (2) shows the commit you pushed. The values look similar to these:
+
+<img src="img/02-first-ci-pipeline/run-report-log.png" alt="Execution 7 of the ci pipeline with the report step expanded: (1) build stage in the sidebar, (2) the Commit line of the log">
 
 ```text
-Build number: 5
-Commit:       3f1c2a9e0b7d4c51a2e86f0d9b3c7a1e5f4d2c60
+Build number: 7
+Commit:       31225f6a4a9b9a0d5718beec5b7dcb388f4de70d
 Event:        push
 Branch:       main
 ```
@@ -484,7 +503,8 @@ Not every failure is a failing test. Here the linter stops the pipeline before t
 
 ```bash
 cd ~/flight-status
-sed -i 's/^from datetime import datetime, timedelta$/import json\nfrom datetime import datetime, timedelta/' flightstatus/rules.py
+sed -i.bak 's/^from datetime import datetime, timedelta$/import json\nfrom datetime import datetime, timedelta/' flightstatus/rules.py
+rm flightstatus/rules.py.bak
 git diff
 git commit -am "Import json in the rules module"
 git push
@@ -495,13 +515,26 @@ h_wait flightops/flight-status ci failure
 h_log flightops/flight-status ci lint | grep -q 'F401'
 -->
 
-Open the new run:
+Run the `sed` command, then `git diff`. The diff shows the new `import json` line above the existing `datetime` import:
 
-- **lint** failed. Its log names the rule (`F401`), the problem (`` `json` imported but unused ``) and the location (`flightstatus/rules.py`, line 7).
+<img src="img/02-first-ci-pipeline/import-json-cli-screenshot.png" alt="Terminal showing the sed command and git diff for flightstatus/rules.py: the added line import json appears above the existing datetime import">
+
+Commit and push the change. The output shows one file changed, one insertion, and the push of `main` to the remote:
+
+<img src="img/02-first-ci-pipeline/commit-import-json.png" alt="Terminal output of git commit -am with the message Import json in the rules module, followed by git push: one file changed, one insertion, and main pushed to the remote">
+
+Select the run **Import json in the rules module** (1) in the **Executions** list of the **ci** pipeline. A red icon marks a failed run.
+
+<img src="img/02-first-ci-pipeline/open-import-json-run.png" alt="Executions page of the ci pipeline: (1) run 8 Import json in the rules module, pushed to main, marked as failed with a red icon">
+
+Open the **build** stage and expand the **lint** step. Its log names the rule (`F401`), the problem (`` `json` imported but unused ``) and the location (`flightstatus/rules.py`, line 7). The `[*]` next to the rule code means that ruff can fix this problem by itself with `ruff check --fix`.
+
+<img src="img/02-first-ci-pipeline/lint-failure-import-json.png" alt="Log of the failed lint step in execution 8 of the ci pipeline: F401 [*] json imported but unused, at flightstatus/rules.py line 7">
+
+The other steps in the run behave as follows:
+
 - **test** was skipped, because an earlier step failed.
 - **report** ran anyway, because of `when: always()`. Its log shows the same build information as before.
-
-`[*]` next to the rule code means that ruff can fix this problem by itself with `ruff check --fix`.
 
 ### 7.2 Fix it
 
@@ -514,7 +547,13 @@ git push
 h_wait flightops/flight-status ci success
 -->
 
-The pipeline is green again.
+The terminal shows the revert commit pushed to `main`:
+
+<img src="img/02-first-ci-pipeline/revert-import-changes.png" alt="Terminal output of git revert --no-edit HEAD and git push: the revert commit d90d416 on main, 1 file changed with 1 deletion, and main pushed from f314a65 to d90d416">
+
+The pipeline is green again. The newest run, `Revert "Import json in the rules module"`, has a green icon:
+
+<img src="img/02-first-ci-pipeline/pipeline-run-success.png" alt="Executions page of the ci pipeline: run 9, Revert Import json in the rules module, pushed to main, with a green success icon">
 
 ## Troubleshooting
 
@@ -527,15 +566,27 @@ The pipeline is green again.
 
   <img src="img/02-first-ci-pipeline/troubleshooting-client-version.png" alt="Harness execution page for the ci pipeline with a red banner: Error response from daemon, client version 1.41 is too old, minimum supported API version is 1.44. The clone and build1 steps show 0s">
 
-  Students on the course Linux VM should not see this error. If you do, lower the minimum API version that the Docker daemon accepts, then run the pipeline again. The `harness` container restarts with Docker and keeps its data.
+  The image sets `GITNESS_DOCKER_API_VERSION=1.41`. Start Harness with the value `1.44` instead. This works on the Linux VM and on a Mac with Docker Desktop. The `harness-data` volume keeps your project, repository and pipeline. Remove the container, then start it again with the command from lab 01, step 4.3, plus the extra option `-e GITNESS_DOCKER_API_VERSION=1.44`:
 
   ```bash
-  sudo mkdir -p /etc/systemd/system/docker.service.d
-  printf '[Service]\nEnvironment=DOCKER_MIN_API_VERSION=1.41\n' | sudo tee /etc/systemd/system/docker.service.d/min-api.conf
-  sudo systemctl daemon-reload && sudo systemctl restart docker
+  docker rm -f harness
+  docker run -d --name harness --restart always \
+    --network devops \
+    -p 3000:3000 -p 3022:3022 \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v harness-data:/data \
+    -e GITNESS_URL_CONTAINER=http://harness:3000 \
+    -e GITNESS_CI_CONTAINER_NETWORKS=devops \
+    -e GITNESS_PRINCIPAL_ADMIN_EMAIL=admin@example.com \
+    -e GITNESS_PRINCIPAL_ADMIN_PASSWORD=Harness-Lab-2026 \
+    -e GITNESS_METRIC_ENABLED=false \
+    -e GITNESS_DOCKER_API_VERSION=1.44 \
+    harness/harness:3.3.0
   ```
 
-  On a Mac with Docker Desktop you can reach the same error, because Docker Desktop bundles its own engine. Check the engine version in Docker Desktop, menu **About Docker Desktop**. Engine 29.x, as below, has the problem. Updating Docker Desktop does not remove it, because newer engines keep the 1.44 minimum. Run Harness with a matching client version instead: remove the container with `docker rm -f harness`, and start it again with the command from lab 01, step 4.3, plus the extra option `-e DOCKER_API_VERSION=1.44`.
+  Wait until Harness is ready (lab 01, step 4.4), then run the pipeline again.
+
+  On a Mac, Docker Desktop bundles its own engine. Check the version in the menu **About Docker Desktop**. Engine 29.x, as below, has the problem. Updating Docker Desktop does not remove it, because newer engines keep the 1.44 minimum.
 
   <img src="img/02-first-ci-pipeline/docker-desktop-version.png" alt="About Docker Desktop dialog showing Docker Desktop 4.55.0 with Engine 29.1.3, Compose v2.40.3-desktop.1 and Kubernetes v1.34.1">
 
