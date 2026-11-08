@@ -1,5 +1,46 @@
 # Lab 01: Lab environment and Harness Open Source
 
+- [Lab 01: Lab environment and Harness Open Source](#lab-01-lab-environment-and-harness-open-source)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Look at your lab machine](#part-1-look-at-your-lab-machine)
+    - [1.1 Check the operating system and resources](#11-check-the-operating-system-and-resources)
+  - [Part 2: Install the base tools](#part-2-install-the-base-tools)
+    - [2.1 Install git, curl and jq](#21-install-git-curl-and-jq)
+    - [2.2 Tell Git who you are](#22-tell-git-who-you-are)
+    - [2.3 Install Visual Studio Code](#23-install-visual-studio-code)
+    - [2.4 Make VS Code end every file with a line break](#24-make-vs-code-end-every-file-with-a-line-break)
+  - [Part 3: Install Docker](#part-3-install-docker)
+    - [3.1 Add Docker's repository and install Docker Engine](#31-add-dockers-repository-and-install-docker-engine)
+    - [3.2 Allow the local image registry](#32-allow-the-local-image-registry)
+    - [3.3 Run Docker without sudo](#33-run-docker-without-sudo)
+    - [3.4 Check that Docker works](#34-check-that-docker-works)
+  - [Part 4: Run Harness Open Source](#part-4-run-harness-open-source)
+    - [4.1 Create a network for the course containers](#41-create-a-network-for-the-course-containers)
+    - [4.2 How Harness stores secrets](#42-how-harness-stores-secrets)
+    - [4.3 Start Harness](#43-start-harness)
+    - [4.4 Wait until Harness is ready](#44-wait-until-harness-is-ready)
+    - [4.5 Sign in](#45-sign-in)
+  - [Part 5: Create a project and a repository](#part-5-create-a-project-and-a-repository)
+    - [5.1 Create the project](#51-create-the-project)
+    - [5.2 Create the repository](#52-create-the-repository)
+  - [Part 6: Push the starter application](#part-6-push-the-starter-application)
+    - [6.1 Get the course files](#61-get-the-course-files)
+    - [6.2 Copy the application into its own folder](#62-copy-the-application-into-its-own-folder)
+    - [6.3 Read the application](#63-read-the-application)
+    - [6.4 Create a personal access token](#64-create-a-personal-access-token)
+    - [6.5 Store the token for Git](#65-store-the-token-for-git)
+    - [6.6 Make the first commit](#66-make-the-first-commit)
+    - [6.7 Push to Harness](#67-push-to-harness)
+    - [6.8 Look at the repository in Harness](#68-look-at-the-repository-in-harness)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+    - [A. Look at what Docker created](#a-look-at-what-docker-created)
+    - [B. Use the Harness API](#b-use-the-harness-api)
+    - [C. Clone over SSH](#c-clone-over-ssh)
+  - [Summary](#summary)
+
+
 In this lab you prepare your lab machine for the whole course. You install the command-line tools, Docker, and Harness Open Source, a self-hosted platform for Git repositories and pipelines. You then create a project and a repository in Harness and push the sample application that you will test, package and deploy over the next three days. By the end of the lab, your code is in a shared repository. Every change from Lab 02 onward goes through that repository.
 
 **Lecture:** L1 DevOps foundations and L2 Version control and continuous integration · **You need:** a fresh lab machine. Nothing else.
@@ -313,19 +354,15 @@ docker inspect harness --format '{{.Config.Image}}' | grep -q '^harness/harness:
 
 ### 4.5 Sign in
 
-Open http://localhost:3000 in the browser on your lab machine. Sign in with:
+Open http://localhost:3000 in the browser on your lab machine. The numbers in the screenshot match the steps below.
 
-- User ID or email: `admin`
-- Password: `Harness-Lab-2026`
+1. In the **Email / User ID** field, enter `admin`.
+2. In the **Password** field, enter `Harness-Lab-2026`.
+3. Select **Sign In**.
 
 
 <!-- shots:begin -->
-<img src="img/01-lab-environment/01-login-1.png" alt="Sign in to Harness, step 1 of 3">
-
-<img src="img/01-lab-environment/01-login-2.png" alt="Sign in to Harness, step 2 of 3">
-
-<img src="img/01-lab-environment/01-login-3.png" alt="Sign in to Harness, step 3 of 3">
-
+<img src="./img/01-lab-environment/login.png" alt="Sign in to Harness">
 <!-- shots:end -->
 
 <!-- ui: login -->
@@ -338,17 +375,24 @@ Take a minute to look around. In Harness Open Source, a **project** groups repos
 
 A project groups everything that belongs to one product or team. You create one project for the flight status service and its infrastructure.
 
-In Harness, select **New Project**. You find it on the start page after sign-in, or in the project selector at the top of the left navigation. Enter `flightops` as the project name and select **Create Project**. Harness adds the project to the project list. Select `flightops` in the list to open it.
+After you sign in, Harness shows the start page. The numbers in the screenshots match the steps below.
 
+1. In the left navigation, **Select project here** opens the project selector. You can also create a project from there.
+2. On the start page, select **New Project**.
 
 <!-- shots:begin -->
-<img src="img/01-lab-environment/02-create_project-1.png" alt="Create the project, step 1 of 4">
+<img src="./img/01-lab-environment/create-a-new-project.png" alt="Create New project">
+<!-- shots:end -->
 
-<img src="img/01-lab-environment/02-create_project-2.png" alt="Create the project, step 2 of 4">
+In the **Create a project** dialog:
 
-<img src="img/01-lab-environment/02-create_project-3.png" alt="Create the project, step 3 of 4">
+1. In the **Name** field, enter `flightops`.
+2. In the **Description** field, enter `Flight Operations`.
+3. Select **Create Project**.
 
-<img src="img/01-lab-environment/02-create_project-4.png" alt="Create the project, step 4 of 4">
+Harness adds the project to the project list. Select `flightops` in the list to open it.
+
+<img src="./img/01-lab-environment/create-project.png" alt="Create project">
 
 <!-- shots:end -->
 
@@ -360,21 +404,38 @@ h_api GET /api/v1/spaces/flightops | jq -e '.identifier == "flightops"' >/dev/nu
 
 ### 5.2 Create the repository
 
-Inside the `flightops` project, open **Repositories** and select **New Repository**. Enter `flight-status` as the name. Leave the README, .gitignore and license options empty. You push existing code into this repository, and an empty repository avoids a merge between two unrelated histories. Keep `main` as the default branch and select **Create Repository**.
+Inside the `flightops` project, the numbers in the first screenshot match these steps:
 
+1. In the left navigation, select **Repositories**.
+2. Select **New Repository**.
 
 <!-- shots:begin -->
-<img src="img/01-lab-environment/03-create_repo-1.png" alt="Create the repository, step 1 of 3">
+<img src="./img/01-lab-environment/new-repository.png" alt="Open Repositories and select New Repository">
+<!-- shots:end -->
 
-<img src="img/01-lab-environment/03-create_repo-2.png" alt="Create the repository, step 2 of 3">
+In the **Create a repository** dialog, the numbers in the second screenshot match these steps:
 
-<img src="img/01-lab-environment/03-create_repo-3.png" alt="Create the repository, step 3 of 3">
+1. In the **Name** field, enter `flight-status`.
+2. In the **Description** field, enter `Flight Status`.
+3. Keep **Private** selected.
+4. Select **Create Repository**.
 
+Leave the license, .gitignore and README options empty. You push existing code into this repository, and an empty repository avoids a merge between two unrelated histories. Keep `main` as the default branch.
+
+<!-- shots:begin -->
+<img src="./img/01-lab-environment/create-a-repository.png" alt="Create the flight-status repository">
 <!-- shots:end -->
 
 <!-- ui: create_repo flightops flight-status -->
 
-Harness shows the empty repository with instructions and its clone URL, `http://localhost:3000/git/flightops/flight-status.git`.
+Harness shows the empty repository with instructions and its clone URL. The highlighted box in the screenshot lists two addresses for the same repository:
+
+1. **HTTP**: `http://localhost:3000/git/flightops/flight-status.git`. This lab uses this address.
+2. **SSH**: `ssh://git@localhost:3022/flightops/flight-status.git`. You do not use it in this lab.
+
+Use the copy icon at the end of a field to copy the address.
+
+<img src="./img/01-lab-environment/git-clone-url.png" alt="Git clone URLs for the flight-status repository">
 
 <!-- test
 h_api GET /api/v1/repos/flightops%2Fflight-status | jq -e '.default_branch == "main"' >/dev/null
@@ -430,6 +491,10 @@ You should see these files (the order can differ):
 ./tests/unit/test_rules.py
 ```
 
+<!-- shots:begin -->
+<img src="./img/01-lab-environment/flight-status-folder.png" alt="Folder in Finder">
+<!-- shots:end -->
+
 ### 6.3 Read the application
 
 You test, package and deploy this service for three days. Look at its structure now.
@@ -460,22 +525,32 @@ code ~/flight-status
 
 Git talks to Harness over HTTP, and Harness needs to know who you are. Instead of your password, you use a personal access token. A token is a long random string that works like a password, but it can expire, and you can delete it without changing your password. GitHub, GitLab and the Harness platform work the same way.
 
-In Harness, open your user menu (your avatar or initials at the bottom of the left navigation) and select **Profile**. In the **Personal access tokens** section, select **New token**. Name it `git`, choose an expiration of 30 days, and create it. Copy the token now. Harness shows it only once.
+The numbers in the first screenshot match these steps:
 
+1. At the bottom of the left navigation, select your user name (**Administrator**). Harness opens the **Account Setting** page.
+2. In the **Personal Access Token** section, select **New Token**.
 
 <!-- shots:begin -->
-<img src="img/01-lab-environment/04-create_token-1.png" alt="Create a personal access token, step 1 of 6">
+<img src="./img/01-lab-environment/new-token.png" alt="Open Account Setting and select New Token">
+<!-- shots:end -->
 
-<img src="img/01-lab-environment/04-create_token-2.png" alt="Create a personal access token, step 2 of 6">
+The **Create a token** dialog opens. The numbers in the second screenshot match these steps:
 
-<img src="img/01-lab-environment/04-create_token-3.png" alt="Create a personal access token, step 3 of 6">
+1. In the **Name** field, enter `git`.
+2. In the **Expiration** list, choose **30 Days**.
+3. Select **Generate Token**.
 
-<img src="img/01-lab-environment/04-create_token-4.png" alt="Create a personal access token, step 4 of 6">
+<!-- shots:begin -->
+<img src="./img/01-lab-environment/enter-create-a-token-info.png" alt="Enter the token name and expiration, then generate the token">
+<!-- shots:end -->
 
-<img src="img/01-lab-environment/04-create_token-5.png" alt="Create a personal access token, step 5 of 6">
+Harness now shows the token. The numbers in the third screenshot match these steps:
 
-<img src="img/01-lab-environment/04-create_token-6.png" alt="Create a personal access token, step 6 of 6">
+1. Select the copy icon at the end of the **Token** field and copy the token now. The icon changes to a check mark. Harness shows the token only once, so paste it into a text file for the next step.
+2. Select **Close** when you have copied the token.
 
+<!-- shots:begin -->
+<img src="./img/01-lab-environment/create-a-token.png" alt="Copy the generated personal access token and select Close">
 <!-- shots:end -->
 
 <!-- ui: create_token git -->
@@ -531,12 +606,20 @@ grep -q '@localhost' ~/.git-credentials
 
 ### 6.8 Look at the repository in Harness
 
-Reload the `flight-status` repository page in Harness. You should see the files, the content of the README, and one commit with your name.
+Reload the `flight-status` repository page in Harness: http://localhost:3000/flightops/flight-status.
 
+The numbers in the screenshot match these parts of the page:
+
+1. The repository name, `flight-status`. The **Private** label means only members of the project can see it.
+2. The branch selector. It shows `main`, the branch you pushed.
+3. The latest commit: your name, the message `Add the flight status service`, and the short commit ID.
+4. The files and folders of the repository, such as `flightstatus`, `tests`, `README.md` and `requirements.txt`. Each row shows the commit that last changed it. Right now that is your one commit for every row.
+5. The content of `README.md`, which Harness displays below the file list.
+
+The **Summary** panel on the right shows 1 commit and 1 branch.
 
 <!-- shots:begin -->
-<img src="img/01-lab-environment/05-browse-1.png" alt="The page in the browser">
-
+<img src="./img/01-lab-environment/flight-status-repository-view.png" alt="Flight Status repo view">
 <!-- shots:end -->
 
 <!-- ui: browse http://localhost:3000/flightops/flight-status -->
@@ -557,9 +640,61 @@ The repository in Harness is now the shared copy of the code. From Lab 02 on, ev
 
 ## Going further (optional)
 
-- **Look at what Docker created.** Run `docker volume inspect harness-data` and find where the data is stored on the disk. Run `docker network inspect devops --format '{{range .Containers}}{{.Name}} {{end}}'` to list the containers on the course network.
-- **Use the Harness API.** Harness describes its API at http://localhost:3000/openapi.yaml. Put your token in a variable with `read -rs TOKEN` (paste it, then press Enter), then list the repositories of your project: `curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/spaces/flightops/repos | jq '.[].identifier'`. The same API is what the web interface uses.
-- **Clone over SSH.** Create a key with `ssh-keygen -t ed25519`, add the content of `~/.ssh/id_ed25519.pub` in Harness under Profile > SSH keys, and clone the repository with the SSH URL from the Clone button of the repository page into `/tmp/flight-status-ssh`. Compare the two ways of authenticating.
+Each exercise stands alone. Run the commands in a terminal on the lab machine.
+
+### A. Look at what Docker created
+
+1. Show where Docker stores the Harness data on the disk. Look for the `Mountpoint` line in the output.
+
+   ```bash
+   docker volume inspect harness-data
+   ```
+
+2. List the containers that are connected to the course network.
+
+   ```bash
+   docker network inspect devops --format '{{range .Containers}}{{.Name}} {{end}}'
+   ```
+
+### B. Use the Harness API
+
+Harness describes its API at http://localhost:3000/openapi.yaml. The web interface uses the same API.
+
+1. Save your token in a variable. Run the command, paste the token (the terminal does not show it), and press Enter. If you no longer have the token, create a new one as in step 6.4.
+
+   ```bash
+   read -rs TOKEN
+   ```
+
+2. List the repositories of the `flightops` project. You should see `"flight-status"`.
+
+   ```bash
+   curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/v1/spaces/flightops/repos | jq '.[].identifier'
+   ```
+
+### C. Clone over SSH
+
+1. Create an SSH key. Press Enter at each question to accept the defaults.
+
+   ```bash
+   ssh-keygen -t ed25519
+   ```
+
+2. Show the public key and copy the whole line.
+
+   ```bash
+   cat ~/.ssh/id_ed25519.pub
+   ```
+
+3. In Harness, open your profile, select **SSH keys**, add a new key, and paste the line.
+4. Open the `flight-status` repository page, select **Clone**, and copy the SSH URL.
+5. Clone the repository into a new folder. Replace `<SSH-URL>` with the URL you copied.
+
+   ```bash
+   git clone <SSH-URL> /tmp/flight-status-ssh
+   ```
+
+6. Compare the two ways of authenticating: the token you stored in `~/.git-credentials` and the SSH key.
 
 ## Summary
 
