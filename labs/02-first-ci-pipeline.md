@@ -25,6 +25,12 @@ docker ps --filter name=harness --format '{{.Names}} {{.Status}}'
 
 You should see `## main...origin/main`, one commit, and `harness Up ...`. If `docker ps` says "permission denied", run `newgrp docker` in this terminal first.
 
+<img src="img/02-first-ci-pipeline/verify-harness-and-repo.png" alt="Terminal output of git status (callout 1), git log (callout 2), and docker ps (callout 3) showing main tracking origin/main, one commit, and harness Up">
+
+1. `git status --short --branch` shows that you are on `main`, and that it is in sync with `origin/main`. An empty list after the branch line means no uncommitted changes.
+2. `git log --oneline -1` shows the latest commit, `Add the flight status service`.
+3. `docker ps --filter name=harness` shows that the Harness container is running (`Up`).
+
 ## Part 1: Run the checks on your machine
 
 ### 1.1 Run the tests in a container
@@ -53,6 +59,12 @@ SKIPPED [1] tests/integration/test_postgres.py:51: DATABASE_URL is not set
 ...
 44 passed, 6 skipped in 0.62s
 ```
+
+<img src="img/02-first-ci-pipeline/test-execution.png" alt="pytest output with three numbered callouts: the session header with the collected test count, the progress line for each test file, and the short test summary with the skipped tests and the final totals">
+
+1. **Session header.** It shows the Python and pytest versions, the folder that pytest runs in (`/src`), and `collected 50 items`. That is the number of tests that pytest found before it ran any of them.
+2. **Progress lines.** Each line is one test file. Each character is one test: `.` means passed and `s` means skipped. The six `s` characters on the `test_postgres.py` line are the six skipped tests.
+3. **Short test summary.** It lists each skipped test and the reason it was skipped. The last line gives the totals, `44 passed, 6 skipped`. Check this line first.
 
 The 6 skipped tests are integration tests. They need a PostgreSQL database and run only when `DATABASE_URL` is set. Lab 03 runs them. Keep in mind that a skipped test did not check anything in this run.
 
@@ -94,22 +106,19 @@ Create the file `~/flight-status/.harness/ci.yaml` in VS Code, paste the content
 <!-- vscode:begin -->
 In VS Code, open the folder `~/flight-status` with **File** > **Open Folder** if it is not open yet. Then:
 
-1. In the Explorer, select the **New File** button next to the folder name.
-2. Type the path of the new file, `.harness/ci.yaml`, and press Enter.
-3. Copy the content with the copy button of the code block below. Click into the empty editor and paste with Ctrl+V.
-4. Save with Ctrl+S. The dot on the editor tab disappears when the file is saved.
+1. Turn on **Auto Save** so that VS Code saves the file for you. Select **File** > **Auto Save**. A check mark next to it means it is on (2).
+
+<img src="img/02-first-ci-pipeline/enable-vscode-auto-save.png" alt="VS Code File menu with Auto Save checked; (1) File menu, (2) Auto Save">
+
+2. In the Explorer, select the **New File** button (1) next to the folder name. Type `.harness/ci.yaml` and press Enter. The new file appears under `.harness` (2).
+
+<img src="img/02-first-ci-pipeline/vscode-new-file-ci.png" alt="VS Code Explorer: (1) New File button next to flight-status, (2) the new ci.yaml file under .harness">
+
+3. Copy the content of the code block below with its copy button. Click into the empty editor and paste with Ctrl+V. The path bar (2) shows where the cursor is in the YAML.
+
+<img src="img/02-first-ci-pipeline/ci-yaml-content.png" alt="VS Code with ci.yaml open and the pasted pipeline content; (1) ci.yaml in the Explorer, (2) the path bar above the editor">
 
 Create the other files in the labs the same way. For a file outside the open folder, select **File** > **New Text File**, paste the content, and save it with **File** > **Save As** under the path that the lab gives.
-
-<img src="img/vscode/vscode-new-file-1.png" alt="Create a file in VS Code, step 1 of 5">
-
-<img src="img/vscode/vscode-new-file-2.png" alt="Create a file in VS Code, step 2 of 5">
-
-<img src="img/vscode/vscode-new-file-3.png" alt="Create a file in VS Code, step 3 of 5">
-
-<img src="img/vscode/vscode-new-file-4.png" alt="Create a file in VS Code, step 4 of 5">
-
-<img src="img/vscode/vscode-new-file-5.png" alt="Create a file in VS Code, step 5 of 5">
 
 <!-- vscode:end -->
 
@@ -179,7 +188,7 @@ Nothing runs yet. Harness does not know about the file until you create a pipeli
 
 ### 3.1 Create the pipeline
 
-In Harness, open the `flight-status` repository and select **Pipelines**. Select **New Pipeline** and enter:
+Open the [Pipelines page of the `flight-status` repository](http://localhost:3000/flightops/flight-status/pipelines). Select **New Pipeline** and enter:
 
 - Name: `ci`
 - Branch: `main`
@@ -187,15 +196,10 @@ In Harness, open the `flight-status` repository and select **Pipelines**. Select
 
 Select **Create**. Harness opens the pipeline and shows your YAML.
 
-
 <!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/01-create_pipeline-1.png" alt="Create the pipeline, step 1 of 4">
+<img src="img/02-first-ci-pipeline/go-to-new-pipeline-flight-status.png" alt="Pipelines page of flight-status: (1) Pipelines in the sidebar, (2) New Pipeline button">
 
-<img src="img/02-first-ci-pipeline/01-create_pipeline-2.png" alt="Create the pipeline, step 2 of 4">
-
-<img src="img/02-first-ci-pipeline/01-create_pipeline-3.png" alt="Create the pipeline, step 3 of 4">
-
-<img src="img/02-first-ci-pipeline/01-create_pipeline-4.png" alt="Create the pipeline, step 4 of 4">
+<img src="img/02-first-ci-pipeline/fill-create-new-pipeline.png" alt="Create New Pipeline dialog: (1) Name ci, (2) YAML path .harness/ci.yaml, (3) Create">
 
 <!-- shots:end -->
 
@@ -205,13 +209,12 @@ The name `ci` is also the pipeline's identifier. In Lab 03, the branch rule that
 
 ### 3.2 Run the pipeline
 
-Select **Run**, keep the branch `main`, and confirm. Harness creates an execution with the number 1.
-
+Select **Save and Run** (1). In the dialog, keep the branch `main` and select **Run pipeline** (1). Harness creates an execution with the number 1.
 
 <!-- shots:begin -->
-<img src="img/02-first-ci-pipeline/02-run_pipeline-1.png" alt="Run the pipeline, step 1 of 2">
+<img src="img/02-first-ci-pipeline/ci-save-and-run.png" alt="Pipeline editor with the Save and Run button (1)">
 
-<img src="img/02-first-ci-pipeline/02-run_pipeline-2.png" alt="Run the pipeline, step 2 of 2">
+<img src="img/02-first-ci-pipeline/run-pipeline.png" alt="Run pipeline dialog with branch main and the Run pipeline button (1)">
 
 <!-- shots:end -->
 
@@ -520,6 +523,22 @@ The pipeline is green again.
 - **The `install` step fails with a network error**: The step container needs internet access to download packages. Run the pipeline again. If it keeps failing, check that the machine reaches PyPI: `curl -sI https://pypi.org | head -1`.
 - **`.venv/bin/activate: not found` in `lint` or `test`**: The `install` step did not run or failed. Steps share the workspace only within one run.
 - **`lint` fails with `File would be reformatted`**: A file does not match ruff's layout. Run the formatter in a container: `docker run --rm -v "$PWD":/src -w /src python:3.12-slim sh -c "pip install --quiet --root-user-action=ignore ruff==0.17.2 && ruff format ."`, then commit the change.
+- **Every step fails at 0s with `Error response from daemon: client version 1.41 is too old. Minimum supported API version is 1.44`**: Docker Engine 29 refuses clients older than API 1.44, and the Harness 3.3.0 image uses a 1.41 client to start the step containers.
+
+  <img src="img/02-first-ci-pipeline/troubleshooting-client-version.png" alt="Harness execution page for the ci pipeline with a red banner: Error response from daemon, client version 1.41 is too old, minimum supported API version is 1.44. The clone and build1 steps show 0s">
+
+  Students on the course Linux VM should not see this error. If you do, lower the minimum API version that the Docker daemon accepts, then run the pipeline again. The `harness` container restarts with Docker and keeps its data.
+
+  ```bash
+  sudo mkdir -p /etc/systemd/system/docker.service.d
+  printf '[Service]\nEnvironment=DOCKER_MIN_API_VERSION=1.41\n' | sudo tee /etc/systemd/system/docker.service.d/min-api.conf
+  sudo systemctl daemon-reload && sudo systemctl restart docker
+  ```
+
+  On a Mac with Docker Desktop you can reach the same error, because Docker Desktop bundles its own engine. Check the engine version in Docker Desktop, menu **About Docker Desktop**. Engine 29.x, as below, has the problem. Updating Docker Desktop does not remove it, because newer engines keep the 1.44 minimum. Run Harness with a matching client version instead: remove the container with `docker rm -f harness`, and start it again with the command from lab 01, step 4.3, plus the extra option `-e DOCKER_API_VERSION=1.44`.
+
+  <img src="img/02-first-ci-pipeline/docker-desktop-version.png" alt="About Docker Desktop dialog showing Docker Desktop 4.55.0 with Engine 29.1.3, Compose v2.40.3-desktop.1 and Kubernetes v1.34.1">
+
 - **A push does not start a run**: Open the pipeline settings, tab Triggers. The trigger needs the event "Branch updated" and must be enabled.
 - **`git push` is rejected with `fetch first`**: The server has commits that you do not have. Run `git pull --rebase` and push again.
 
