@@ -30,6 +30,9 @@ The copy button leaves out the line break after the last line, and ruff fails a 
 Lab 01 turned on the VS Code setting that adds this line break, but only on machines that had no VS Code settings file yet.
 The next command adds the setting to the settings file you have, and keeps your other settings.
 
+> [!IMPORTANT]
+> Run this command before you paste the four Python files. Without the final line break, `ruff check` fails the file.
+
 ```bash
 mkdir -p ~/.config/Code/User
 f=~/.config/Code/User/settings.json
@@ -124,7 +127,23 @@ Integration tests change real data. `psql` is PostgreSQL's command-line client. 
 docker exec testdb psql -U flights -d flights -c "SELECT number, origin, destination, status FROM flights ORDER BY number;"
 ```
 
-You should see the eight sample flights. The last integration test started the application against this database, and the application loaded its sample data into the empty table.
+You should see the eight sample flights. 
+
+```text
+number | origin | destination |  status   
+--------+--------+-------------+-----------
+ UA101  | ORD    | SFO         | SCHEDULED
+ UA202  | ORD    | EWR         | SCHEDULED
+ UA303  | DEN    | IAH         | SCHEDULED
+ UA404  | SFO    | ORD         | SCHEDULED
+ UA505  | IAH    | DEN         | DELAYED
+ UA606  | EWR    | LAX         | SCHEDULED
+ UA707  | ORD    | DEN         | SCHEDULED
+ UA808  | LAX    | IAD         | SCHEDULED
+(8 rows)
+```
+
+The last integration test started the application against this database, and the application loaded its sample data into the empty table.
 
 ### 1.5 Remove the database container
 
@@ -134,11 +153,19 @@ The container was only for this test run. `docker rm -f` stops and deletes it.
 docker rm -f testdb
 ```
 
+You will see an output
+```text
+testdb
+```
+
 ## Part 2: A database service in the pipeline
 
 ### 2.1 Add a background step
 
 The pipeline needs a database too. A `background` step starts a container that keeps running while the next steps run. Harness makes it reachable under the step's name, so the tests connect to the host `db`. The user name and password in the YAML belong to a database that exists only for the length of one run. Real credentials never go into a pipeline file. Lab 06 covers them.
+
+> [!WARNING]
+> Never put a real password in `.harness/ci.yaml`. The file is committed to Git, so everyone with access to the repository can read it. The `flights` password here works only because the database exists for one run.
 
 The new version also adds a coverage threshold. `--cov-fail-under=90` makes pytest end with an error when coverage is below 90%. The pipeline then fails, even when every test passed. The `report` step from Lab 02 is not part of this version.
 
@@ -197,6 +224,9 @@ Compare the `test` step with the command you ran in step 1.3. The image, the `DA
 
 `main` is not protected yet, so you can still push to it without a pull request. This is the last direct push to `main` in the course.
 
+> [!IMPORTANT]
+> Part 3 turns on a rule that rejects direct pushes to `main`. Finish this push before you continue.
+
 ```bash
 cd ~/flight-status
 git commit -am "Run integration tests against PostgreSQL and require 90% coverage"
@@ -208,12 +238,30 @@ h_wait flightops/flight-status ci success
 h_log flightops/flight-status ci test | grep -q 'Required test coverage of 90% reached'
 -->
 
+You will see an output similar to this one:
+
+```text
+[main 95bfb47] Run integration tests against PostgreSQL and require 90% coverage
+ 1 file changed, 13 insertions(+), 14 deletions(-)
+Enumerating objects: 7, done.
+Counting objects: 100% (7/7), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (3/3), done.
+Writing objects: 100% (4/4), 655 bytes | 655.00 KiB/s, done.
+Total 4 (delta 2), reused 0 (delta 0), pack-reused 0
+To http://localhost:3000/git/flightops/flight-status.git
+   84b033e..95bfb47  main -> main
+```
+
 The push trigger starts the pipeline. Open the run in Harness and look at:
 
 - The **db** step. It starts first and keeps running while the other steps run.
 - The **test** log. It shows `50 passed`, the coverage table and the line `Required test coverage of 90% reached. Total coverage: 99.48%`.
 
-The Harness platform has the same step type, called a Background step, for services such as databases in a Build stage.
+  <img src="img/03-quality-gates/build-90pct-coverage.png" alt="Build log of the test step: coverage table with TOTAL 99%, the line Required test coverage of 90% reached, and 50 passed">
+
+> [!NOTE]
+> The Harness platform has the same step type, called a Background step, for services such as databases in a Build stage.
 
 ## Part 3: Protect main
 
@@ -221,39 +269,40 @@ The Harness platform has the same step type, called a Background step, for servi
 
 So far the pipeline found problems after they reached `main`. A branch rule moves the check in front of `main`. Every change must then arrive through a pull request, and a pull request can merge only after the `ci` pipeline passes on it. A check that a change must pass before it may continue is called a quality gate.
 
-In the `flight-status` repository, open **Settings**, then **Rules**, and select **New branch rule**. Enter:
-
-- Name: `protect-main`
-- Target branches: the default branch (`main`)
-- **Require pull request**, which blocks direct pushes
-- **Block force push** and **Block branch deletion**
-- **Require status checks to pass**, with the check `ci`
-- Bypass: leave it empty, and do not allow repository owners or administrators to bypass the rule
-
-Save the rule. The labels can differ a little between Harness versions. What matters is the effect.
-
+In the `flight-status` repository, open **Settings** (1) in the sidebar, then the **Rules** tab. Select **New branch rule** (2). You can also go straight to http://localhost:3000/settings/flightops/project/rules (3).
 
 <!-- shots:begin -->
-<img src="img/03-quality-gates/01-create_branch_rule-1.png" alt="Create the branch rule, step 1 of 10">
+<img src="img/03-quality-gates/Goto-new-branch-rule.png" alt="Project Settings Rules page: (1) Settings in the sidebar, (2) New branch rule button, (3) the Rules page URL in the address bar">
+<!-- shots:end -->
 
-<img src="img/03-quality-gates/01-create_branch_rule-2.png" alt="Create the branch rule, step 2 of 10">
+Enter the rule name `protect-main` in **Name** (1). The **Description** (2) field is optional. You can add a short note, for example `Protect Main`, or leave it empty.
 
-<img src="img/03-quality-gates/01-create_branch_rule-3.png" alt="Create the branch rule, step 3 of 10">
+<!-- shots:begin -->
+<img src="img/03-quality-gates/create-branch-rule-main-1.png" alt="Create Branch Rule form: (1) Name set to protect-main, (2) Description">
+<!-- shots:end -->
 
-<img src="img/03-quality-gates/01-create_branch_rule-4.png" alt="Create the branch rule, step 4 of 10">
+Under **Target Patterns**, set these options:
 
-<img src="img/03-quality-gates/01-create_branch_rule-5.png" alt="Create the branch rule, step 5 of 10">
+- **Default branch** (1) is checked, so the rule applies to `main`.
+- **Block deletion** (2) blocks branch deletion.
+- **Block force push** (3) blocks force pushes.
+- **Require pull request** (4) blocks direct pushes.
+- **Require status checks to pass** (5) requires a passing check before a pull request can merge. Under **Status checks**, add **ci** (6).
+- Bypass: leave it empty, and do not allow repository owners or administrators to bypass the rule.
 
-<img src="img/03-quality-gates/01-create_branch_rule-6.png" alt="Create the branch rule, step 6 of 10">
+> [!IMPORTANT]
+> If you allow administrators to bypass the rule, the push in step 3.2 succeeds, and the rule does not protect `main` from you.
 
-<img src="img/03-quality-gates/01-create_branch_rule-7.png" alt="Create the branch rule, step 7 of 10">
+<!-- shots:begin -->
+<img src="img/03-quality-gates/settings-for-branch-rule-2.png" alt="Target Patterns and rule options: (1) Default branch, (2) Block deletion, (3) Block force push, (4) Require pull request, (5) Require status checks to pass, (6) ci status check, (7) Create rule button">
+<!-- shots:end -->
 
-<img src="img/03-quality-gates/01-create_branch_rule-8.png" alt="Create the branch rule, step 8 of 10">
+Select **Create rule** (7) to save. The labels can differ a little between Harness versions. What matters is the effect.
 
-<img src="img/03-quality-gates/01-create_branch_rule-9.png" alt="Create the branch rule, step 9 of 10">
+Harness shows a **Branch Rule created** message (2). The **protect-main** rule (1) appears in the list with the **Block branch deletion**, **Require status checks to pass**, and **Require pull request** rules applied.
 
-<img src="img/03-quality-gates/01-create_branch_rule-10.png" alt="Create the branch rule, step 10 of 10">
-
+<!-- shots:begin -->
+<img src="img/03-quality-gates/branch-rule-main-created.png" alt="Rules list after saving: (1) the protect-main rule card, (2) the Branch Rule created message">
 <!-- shots:end -->
 
 <!-- ui: create_branch_rule flightops/flight-status protect-main ci -->
@@ -286,18 +335,32 @@ To http://localhost:3000/git/flightops/flight-status.git
 error: failed to push some refs to 'http://localhost:3000/git/flightops/flight-status.git'
 ```
 
-The rule applies to you too, even though you are the administrator.
+The rule applies to you too, even though you are the administrator. Your terminal ends with the red line **error: failed to push some refs** (1).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/change-main-directly-fails.png" alt="Terminal after git push to main: (1) the red error line, failed to push some refs, below the protect-main violation message">
+<!-- shots:end -->
 
 ### 3.3 Undo the local commit
 
 Your local `main` now has a commit that the server will never accept. `git reset --hard origin/main` moves your branch back to the server's version and discards the commit. Use `reset --hard` only for commits that nobody else has, because it deletes them.
+
+> [!WARNING]
+> `git reset --hard` also discards uncommitted changes to tracked files. Run `git status` first, and check that you have nothing you want to keep.
 
 ```bash
 git reset --hard origin/main
 git status --short --branch
 ```
 
-You should see `## main...origin/main`, without "ahead".
+After the reset, Git prints `HEAD is now at 95bfb47` (1). Then `git status` should show `## main...origin/main` (2), without "ahead".
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/reset-hard-main-branch.png" alt="Terminal after git reset --hard origin/main and git status --short --branch: (1) HEAD is now at 95bfb47, (2) the status line ## main...origin/main">
+<!-- shots:end -->
+
+> [!NOTE]
+> `git reset --hard origin/main` discards your local commits and any uncommitted changes to tracked files. Running it again does nothing once `HEAD` matches `origin/main`. Files that Git does not track are not removed. `origin/main` changes only when you run `git fetch` or `git pull`, so run `git fetch origin` first if the remote may have moved.
 
 ## Part 4: Build a feature on a branch
 
@@ -311,6 +374,12 @@ A branch holds work in progress without changing `main`. Teams that use trunk-ba
 cd ~/flight-status
 git switch -c feature/departures
 ```
+
+Git confirms that it created and switched to the new branch (1).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/switch-feature-departures-branch.png" alt="Terminal after git switch -c feature/departures: (1) Switched to a new branch 'feature/departures'">
+<!-- shots:end -->
 
 ### 4.2 Add the business rule
 
@@ -381,6 +450,12 @@ def departures_board(flights: list[Flight], airport: str) -> list[Flight]:
     upcoming = [f for f in flights if f.origin == airport and f.status not in FINISHED]
     return sorted(upcoming, key=lambda f: f.departure)
 ```
+
+In the editor, `rules.py` is marked as modified (1). The new `departures_board()` function is at the end of the file (2).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/add-bus-rule.png" alt="Editor with flightstatus/rules.py open: (1) rules.py in the Explorer, marked M as modified, (2) the new departures_board() function at the end of the file">
+<!-- shots:end -->
 
 ### 4.3 Add the API endpoint
 
@@ -530,6 +605,12 @@ th, td {{ text-align: left; padding: 8px 16px 8px 0; border-bottom: 1px solid #e
 app = create_app()
 ```
 
+In the editor, `main.py` is marked as modified (1). The cursor is on the empty last line of the file (2), after `app = create_app()`.
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/vs-code-main-update.png" alt="Editor with flightstatus/main.py open: (1) main.py in the Explorer, marked M as modified, (2) the empty last line after app = create_app()">
+<!-- shots:end -->
+
 ### 4.4 Add the tests
 
 New code needs tests at more than one level:
@@ -580,6 +661,12 @@ def test_ordered_by_estimated_departure():
     assert [f.number for f in departures_board(flights, "ORD")] == ["UA2", "UA1"]
 ```
 
+In the editor, `test_departures.py` appears under `tests/unit` (1). The cursor is on the empty last line, after the last test (2).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/vs-code-add-test-departures.png" alt="Editor with tests/unit/test_departures.py open: (1) test_departures.py in the Explorer under tests/unit, (2) the empty last line after test_ordered_by_estimated_departure">
+<!-- shots:end -->
+
 Create `tests/api/test_departures_api.py`:
 
 <!-- file: ~/flight-status/tests/api/test_departures_api.py -->
@@ -605,6 +692,12 @@ def test_departed_flight_leaves_the_board(client):
     assert "UA101" not in numbers
 ```
 
+In the editor, `test_departures_api.py` appears under `tests/api` (1). The cursor is on the empty last line, after the last test (2).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/vs-code-add-test_departures_api.png" alt="Editor with tests/api/test_departures_api.py open: (1) test_departures_api.py in the Explorer under tests/api, (2) the empty last line after test_departed_flight_leaves_the_board">
+<!-- shots:end -->
+
 ### 4.5 Run the tests on your machine
 
 Run the tests before you push. A failure on your machine costs you a few seconds. The same failure in a pull request costs a pipeline run and the attention of a reviewer. Finding problems as early as possible is called "shifting left".
@@ -627,6 +720,9 @@ FAILED tests/unit/test_departures.py::test_ordered_by_estimated_departure - Asse
 ```
 
 Read the unit test failure. The board returned `UA1` before `UA2`, but the test expected `UA2` first. UA1 is scheduled first, but its 90-minute delay should move it behind UA2. The API test shows the same problem with the sample flights.
+
+> [!TIP]
+> In pytest output, the first line of each failure names the file, the test and the values that did not match. Start there.
 
 ### 4.6 Fix the bug
 
@@ -671,18 +767,28 @@ git push -u origin feature/departures
 
 The output ends with a line that suggests creating a pull request for `feature/departures`.
 
+The last line (1) confirms that the local branch tracks the branch on the server.
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/push-feature-departures.png" alt="Terminal after git push -u origin feature/departures: (1) the line branch 'feature/departures' set up to track 'origin/feature/departures'">
+<!-- shots:end -->
+
 ### 5.2 Open the pull request
 
 A pull request asks the team to merge a branch into `main`. It shows the changes, the results of the checks and the review comments in one place.
 
-In Harness, open the `flight-status` repository. Harness shows a banner for the branch you just pushed, with a button to create a pull request. If the banner is not there, open **Pull Requests** and select **New Pull Request**. Choose `feature/departures` as the source branch and `main` as the target branch. Enter the title `Add departures board`, and describe in the description what the change does and how you tested it. Select **Create pull request**.
-
+In Harness, open the `flight-status` repository. Harness shows a banner for the branch you just pushed, with a button to create a pull request. Select **Compare & pull request** (1). 
 
 <!-- shots:begin -->
-<img src="img/03-quality-gates/02-open_pr-1.png" alt="Open the pull request, step 1 of 2">
+<img src="img/03-quality-gates/goto-pull-request.png" alt="Repository page with the banner You pushed to feature/departures: (1) the Compare & pull request button">
+<!-- shots:end -->
 
-<img src="img/03-quality-gates/02-open_pr-2.png" alt="Open the pull request, step 2 of 2">
+If the banner is not there, open **Pull Requests** and select **New Pull Request**. Choose `feature/departures` as the source branch and `main` as the target branch.
 
+In the **Title** field (1), replace the prefilled text with `Add departures board`. In the **Description** field (2), describe what the change does and how you tested it. Select **Create pull request** (3).
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/create-pr-departures.png" alt="Comparing Changes page: (1) Title field, (2) Description field, (3) Create pull request button">
 <!-- shots:end -->
 
 <!-- ui: open_pr flightops/flight-status feature/departures main "Add departures board" -->
@@ -700,7 +806,11 @@ h_log flightops/flight-status ci lint | grep -q 'flightstatus/main.py'
 
 Wait until the run finishes, then reload the pull request. The checks section shows `ci` as failed. The merge is blocked, and Harness explains why: "The following status checks are required to be completed successfully: ci".
 
-Open the failed run from the pull request. The **lint** step failed, and **test** was skipped:
+<!-- shots:begin -->
+<img src="img/03-quality-gates/failed-check-details.png" alt="Pull request Conversation tab: (1) Details button on the ci check, (2) Checks tab">
+<!-- shots:end -->
+
+Open the failed run from the pull request. Select **Checks** (2), then select **Details** (1) on the **ci** row. The **lint** step failed, and **test** was skipped:
 
 ```text
 All checks passed!
@@ -717,19 +827,22 @@ unformatted: File would be reformatted
 
 `All checks passed!` comes from `ruff check`: the code has no lint problems. The rest comes from `ruff format --check`. It names the file and the line, and shows the change it would make: the line with `-` is your code, the line with `+` is the formatted version.
 
-The tests passed on your machine, but you did not run the formatter. The pipeline runs every check on every change, including the checks you forget.
-
+To read the log, select **build** (1), then open the **lint** step. The **lint** log (2) shows the location line `flightstatus/main.py:102:14`, which names the file and line that need the change.
 
 <!-- shots:begin -->
-<img src="img/03-quality-gates/03-view_pr-1.png" alt="Open the pull request">
-
+<img src="img/03-quality-gates/build-lint-failure.png" alt="Checks view for ci: (1) build job in the left pane, (2) lint log with the location flightstatus/main.py:102:14">
 <!-- shots:end -->
+
+The tests passed on your machine, but you did not run the formatter. The pipeline runs every check on every change, including the checks you forget.
 
 <!-- ui: view_pr flightops/flight-status -->
 
 ### 5.4 Format the code
 
 Run the formatter in a container. Without `--check`, ruff changes the files. `git diff` then shows what it changed.
+
+> [!CAUTION]
+> The container runs as root, so the files that ruff writes belong to root. If you later get `Permission denied` on a file, see the Troubleshooting section.
 
 ```bash
 cd ~/flight-status
@@ -744,6 +857,10 @@ You should see one changed line. The new route uses single quotes, and ruff's st
 -    @app.get('/airports/{code}/departures')
 +    @app.get("/airports/{code}/departures")
 ```
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/reformatted-py-files.png" alt="Terminal output after ruff format: 2 files reformatted, and the git diff for flightstatus/main.py and tests/api/test_departures_api.py">
+<!-- shots:end -->
 
 A formatter does not change what the code does. It removes style discussions from code review, and it keeps diffs small, because nobody reformats lines that someone else wrote.
 
@@ -773,13 +890,19 @@ Reload the pull request when the runs have finished. The `ci` check is green, an
 
 A check proves that the code passes the tests and the linter. A review checks what tools cannot: whether this is the right change, whether it is clear, and whether something is missing. Even when you review your own change, read the diff the way a reviewer would.
 
-Open the **Changes** tab of the pull request. Read the diff of `rules.py` and `main.py`. Add a comment on the `FINISHED` line, for example: "DELAYED flights stay on the board, because they have not left yet."
-
+Open the pull request. Select **Conversation** (1) and **Checks** (2) to refresh the page. The `ci` check is green.
 
 <!-- shots:begin -->
-<img src="img/03-quality-gates/04-view_pr-1.png" alt="Open the pull request">
-
+<img src="img/03-quality-gates/review-pr.png" alt="Pull request Conversation tab: (1) Conversation tab, (2) Checks tab, with the merge ready and all checks succeeded">
 <!-- shots:end -->
+
+Select **build** and check the **lint** step (1). It passed.
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/check-build-lint-step.png" alt="Checks view for ci / build: (1) the lint step, passed, with clone, db, install, and test also green">
+<!-- shots:end -->
+
+Open the **Changes** tab of the pull request. Read the diff of `rules.py` and `main.py`. Add a comment on the `FINISHED` line, for example: "DELAYED flights stay on the board, because they have not left yet."
 
 <!-- ui: view_pr flightops/flight-status -->
 
@@ -787,14 +910,22 @@ Open the **Changes** tab of the pull request. Read the diff of `rules.py` and `m
 
 A squash merge combines the commits of the branch ("Add a departures board for each airport" and "Format the departures route") into one commit on `main`. `main` then has one commit per change, which is easier to read and to revert.
 
-Select **Squash and merge**. Keep the option to delete the source branch, and confirm.
-
+Select **Squash and merge** (1).
 
 <!-- shots:begin -->
-<img src="img/03-quality-gates/05-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
+<img src="img/03-quality-gates/click-squash-merge.png" alt="Pull request Conversation tab: (1) Squash and merge button, with all checks succeeded above it">
+<!-- shots:end -->
 
-<img src="img/03-quality-gates/05-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
+Keep the option to delete the source branch. Select **Confirm Squash and merge** (1).
 
+<!-- shots:begin -->
+<img src="img/03-quality-gates/confirm-squash-and-merge.png" alt="Squash and merge dialog: (1) Confirm Squash and merge button, with the commit title Add a departures board for each airport (#1)">
+<!-- shots:end -->
+
+The pull request shows **Merged**. The **All checks have succeeded** row (1) stays green.
+
+<!-- shots:begin -->
+<img src="img/03-quality-gates/all-checks-passed.png" alt="Merged pull request: (1) All checks have succeeded row, with the Revert and Delete Branch buttons">
 <!-- shots:end -->
 
 <!-- ui: merge_pr flightops/flight-status -->
@@ -811,6 +942,9 @@ The squash commit exists only on the server so far. `git pull` brings it to your
 
 Because of the squash, Git cannot see that your local branch was merged: its two commits are not on `main`, only their combined content. `git branch -D`, with a capital D, deletes the branch anyway. `git fetch --prune` removes the local reference to the deleted server branch.
 
+> [!WARNING]
+> `git branch -D` deletes the branch even though Git does not see it as merged. Run it only after the pull request shows **Merged**.
+
 ```bash
 cd ~/flight-status
 git switch main
@@ -822,6 +956,20 @@ git log --oneline -3
 
 You should see the squash commit at the top, with the pull request number in its message, for example `Add departures board (#1)`.
 
+```text
+Fast-forward
+ flightstatus/main.py             |  7 ++++++-
+ flightstatus/rules.py            | 10 ++++++++++
+ tests/api/test_departures_api.py | 19 +++++++++++++++++++
+ tests/unit/test_departures.py    | 37 +++++++++++++++++++++++++++++++++++++
+ 4 files changed, 72 insertions(+), 1 deletion(-)
+ create mode 100644 tests/api/test_departures_api.py
+ create mode 100644 tests/unit/test_departures.py
+Deleted branch feature/departures (was 93132b0).
+e48f894 (HEAD -> main, origin/main) Add a departures board for each airport (#1)
+95bfb47 Run integration tests against PostgreSQL and require 90% coverage
+84b033e Add CI pipeline and describe it in README
+```
 <!-- test
 test -z "$(git status --porcelain)"
 grep -q 'def departures_board' flightstatus/rules.py
