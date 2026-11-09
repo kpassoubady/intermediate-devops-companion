@@ -6,7 +6,15 @@ In this lab you move the state into the cluster, give the pipeline its own crede
 The pipeline checks and plans every pull request, and applies the change after the pull request is merged.
 You then change the infrastructure through a pull request, and use the pipeline to detect drift.
 
-**Lecture:** L7 Infrastructure as code in pipelines · **You need:** Lab 04 completed (or run `~/intermediate-devops-companion/scripts/catch-up.sh 05` on a fresh machine)
+**Lecture:** L7 Infrastructure as code in pipelines · **You need:** Lab 04.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 05
+```
 
 ## Goals
 
@@ -83,9 +91,18 @@ The usual answer is a small set of objects that an administrator applies once by
 
 Create `~/platform/bootstrap/terraform-admin.yaml`:
 
+Create directory:
 ```bash
 mkdir -p ~/platform/bootstrap
 ```
+
+touch the file:
+
+```bash
+touch ~/platform/bootstrap/terraform-admin.yaml
+```
+
+In VS Code copy and past the below code:
 
 <!-- file: ~/platform/bootstrap/terraform-admin.yaml -->
 ```yaml

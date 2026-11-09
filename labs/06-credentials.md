@@ -6,7 +6,15 @@ You use a Harness secret in a pipeline, and see what happens when a step prints 
 You give the delivery pipeline of Day 3 its own identity with the smallest set of permissions it needs.
 You turn on secret scanning so a pushed key is rejected, and you rotate a credential.
 
-**Lecture:** L8 Credential management · **You need:** Lab 05 completed (or run `~/intermediate-devops-companion/scripts/catch-up.sh 06` on a fresh machine)
+**Lecture:** L8 Credential management · **You need:** Lab 05.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 06
+```
 
 ## Goals
 

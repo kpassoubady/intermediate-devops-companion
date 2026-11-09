@@ -2,7 +2,15 @@
 
 In this lab you package the flight status service as a container image. You write a Dockerfile, build the image, run it and look at its layers. You push the image to the local registry, scan it for known vulnerabilities, and produce a software bill of materials (SBOM). Then you run the service together with PostgreSQL using Docker Compose. Finally, you describe the same container as an Amazon ECS task definition, the format that AWS Fargate runs. Lab 08 deploys the image you build here to Kubernetes.
 
-**Lecture:** L9 Containers and L10 Compose, ECS task definitions and Fargate · **You need:** Lab 06 (or: run `~/intermediate-devops-companion/scripts/catch-up.sh 07` on a fresh machine)
+**Lecture:** L9 Containers and L10 Compose, ECS task definitions and Fargate · **You need:** Lab 06.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 07
+```
 
 ## Goals
 

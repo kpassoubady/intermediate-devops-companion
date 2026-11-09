@@ -2,7 +2,15 @@
 
 In this lab you turn the `ci` pipeline into a delivery pipeline. Every run lints and tests the code, builds the container image and scans it. Runs for changes merged to `main` also deploy the image to dev, check the deployment with a smoke test, and roll back automatically if either step fails. A second pipeline, `promote`, deploys the same image to production when you create a release tag. Then you merge a bad change on purpose and watch the pipeline protect dev. This lab uses what you built on all three days and puts lecture L12 into practice.
 
-**Lecture:** L12 Continuous delivery · **You need:** Lab 08 (or: run `~/intermediate-devops-companion/scripts/catch-up.sh 09` on a fresh machine)
+**Lecture:** L12 Continuous delivery · **You need:** Lab 08.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 09
+```
 
 ## Goals
 

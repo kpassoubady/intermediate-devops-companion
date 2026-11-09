@@ -52,7 +52,15 @@ You create a local Kubernetes cluster with k3d. Then you describe two environmen
 You watch Terraform plan and apply changes, look at the state it keeps, and see it correct a change that someone made by hand.
 At the end, the Terraform code goes into its own Git repository in Harness.
 
-**Lecture:** L5 Infrastructure as code concepts and L6 Terraform architecture · **You need:** Lab 03 completed (or run `~/intermediate-devops-companion/scripts/catch-up.sh 04` on a fresh machine)
+**Lecture:** L5 Infrastructure as code concepts and L6 Terraform architecture · **You need:** Lab 03.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 04
+```
 
 ## Goals
 

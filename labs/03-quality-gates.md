@@ -40,7 +40,15 @@
 
 In Lab 02 the pipeline checked `main` after each push. When it found a problem, the problem was already on `main`. In this lab you move the checks in front of `main`. You run the integration tests against a real PostgreSQL database, on your machine and in the pipeline, and you add a coverage threshold. You then protect `main` with a branch rule: changes arrive only through pull requests, and a pull request can merge only after the `ci` pipeline passes. Finally you deliver a new feature the way a team would: a branch, tests on your machine, a pull request, a failed check, a fix, a review and a merge.
 
-**Lecture:** L4 Testing and quality gates · **You need:** Lab 02. On a fresh machine, run `~/intermediate-devops-companion/scripts/catch-up.sh 03` first (see the course README).
+**Lecture:** L4 Testing and quality gates · **You need:** Lab 02.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 03
+```
 
 ## Goals
 

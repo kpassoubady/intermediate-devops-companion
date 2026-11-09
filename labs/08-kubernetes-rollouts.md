@@ -2,7 +2,15 @@
 
 In this lab you deploy the flight status image from Lab 07 to the `flightops-dev` namespace that Terraform created in Lab 04. You write the Kubernetes manifests yourself: a Deployment, a Service and an Ingress, plus a Kustomize overlay for the dev environment. You watch Kubernetes replace a pod you delete, run into the namespace quota when you scale up, and roll out a new version without downtime. Then you break the deployment in three different ways, read the symptoms, and recover. This lab puts lecture L11 into practice. Lab 09 automates the same deployment in a pipeline.
 
-**Lecture:** L11 Kubernetes · **You need:** Lab 07 (or: run `~/intermediate-devops-companion/scripts/catch-up.sh 08` on a fresh machine)
+**Lecture:** L11 Kubernetes · **You need:** Lab 07.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 08
+```
 
 ## Goals
 
