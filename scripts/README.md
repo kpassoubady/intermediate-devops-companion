@@ -5,3 +5,12 @@ Catch-up scripts for the labs. `catch-up.sh NN` replays Labs 01 to NN-1 on a fre
 ```bash
 ~/intermediate-devops-companion/scripts/catch-up.sh 04
 ```
+
+## Helper Scripts
+
+- `start-harness.sh`: Starts or restarts the local Harness Open Source container on the `devops` network and waits until it is ready at `http://localhost:3000`.
+
+```bash
+~/intermediate-devops-companion/scripts/start-harness.sh
+```
+

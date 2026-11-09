@@ -1,5 +1,52 @@
 # Lab 04: Terraform foundations on Kubernetes
 
+- [Lab 04: Terraform foundations on Kubernetes](#lab-04-terraform-foundations-on-kubernetes)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Install k3d, kubectl and Terraform](#part-1-install-k3d-kubectl-and-terraform)
+    - [1.1 Install k3d and check its checksum](#11-install-k3d-and-check-its-checksum)
+    - [1.2 Install kubectl 1.34](#12-install-kubectl-134)
+    - [1.3 Install Terraform 1.17.0](#13-install-terraform-1170)
+  - [Part 2: Create the registry and the cluster](#part-2-create-the-registry-and-the-cluster)
+    - [2.1 Create a local image registry](#21-create-a-local-image-registry)
+    - [2.2 Describe the cluster in a file](#22-describe-the-cluster-in-a-file)
+    - [2.3 Create the cluster](#23-create-the-cluster)
+    - [2.4 See what k3d created](#24-see-what-k3d-created)
+    - [2.5 Just enough Kubernetes for today](#25-just-enough-kubernetes-for-today)
+  - [Part 3: Your first Terraform configuration](#part-3-your-first-terraform-configuration)
+    - [3.1 Tell Terraform where the cluster is](#31-tell-terraform-where-the-cluster-is)
+    - [3.2 Declare the providers](#32-declare-the-providers)
+    - [3.3 Declare the environments](#33-declare-the-environments)
+    - [3.4 Declare the namespaces](#34-declare-the-namespaces)
+    - [3.5 Initialize the working directory](#35-initialize-the-working-directory)
+    - [3.6 Check formatting and validity](#36-check-formatting-and-validity)
+    - [3.7 Plan](#37-plan)
+    - [3.8 Apply](#38-apply)
+    - [3.9 Look at the state](#39-look-at-the-state)
+    - [3.10 Run the plan again](#310-run-the-plan-again)
+    - [3.11 Compare with an imperative command](#311-compare-with-an-imperative-command)
+  - [Part 4: Resource limits and drift](#part-4-resource-limits-and-drift)
+    - [4.1 Add a quota and default limits](#41-add-a-quota-and-default-limits)
+    - [4.2 Plan and apply](#42-plan-and-apply)
+    - [4.3 Change the quota by hand](#43-change-the-quota-by-hand)
+    - [4.4 Detect and correct the drift](#44-detect-and-correct-the-drift)
+  - [Part 5: A database module](#part-5-a-database-module)
+    - [5.1 Why a module](#51-why-a-module)
+    - [5.2 Write the module](#52-write-the-module)
+    - [5.3 Call the module](#53-call-the-module)
+    - [5.4 Initialize the module](#54-initialize-the-module)
+    - [5.5 Plan and apply](#55-plan-and-apply)
+    - [5.6 Check the databases](#56-check-the-databases)
+  - [Part 6: Put the platform code in Git](#part-6-put-the-platform-code-in-git)
+    - [6.1 Create the repository in Harness](#61-create-the-repository-in-harness)
+    - [6.2 Keep working files and state out of Git](#62-keep-working-files-and-state-out-of-git)
+    - [6.3 Commit and push](#63-commit-and-push)
+    - [6.4 Look at the repository](#64-look-at-the-repository)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+  - [Summary](#summary)
+
+
 In this lab you build the platform that the flight status service will run on.
 You create a local Kubernetes cluster with k3d. Then you describe two environments, dev and prod, in Terraform: a namespace for each, limits on what can run there, and a PostgreSQL database.
 You watch Terraform plan and apply changes, look at the state it keeps, and see it correct a change that someone made by hand.
@@ -83,7 +130,9 @@ You should see:
 k3d-linux-amd64: OK
 ```
 
-Only install the file when the check says `OK`.
+> [!IMPORTANT]
+> Only install the file when the check says `OK`. If it says `FAILED`, delete the download and download it again.
+
 `install` copies the file to `/usr/local/bin`, which is on your `PATH`, and makes it executable.
 
 ```bash
@@ -172,7 +221,8 @@ Terraform v1.17.0
 on linux_amd64
 ```
 
-Terraform may add a note that a newer version is available. You can ignore it.
+> [!NOTE]
+> Terraform may add a note that a newer version is available. You can ignore it.
 
 <!-- test
 k3d version | grep -q 'v5.9.0'
@@ -355,15 +405,17 @@ kubectl get pods --all-namespaces
 
 The `kube-system` namespace holds k3s's own components: DNS (CoreDNS), the Traefik ingress controller, the local-path storage provisioner and metrics-server.
 
-You will see these components when you run the command above:
+The first table is the output of `kubectl get namespaces`. The second table is the output of `kubectl get pods --all-namespaces`.
 
-```
-kubectl get pods --all-namespaces
+```text
 NAME              STATUS   AGE
 default           Active   3m10s
 kube-node-lease   Active   3m10s
 kube-public       Active   3m10s
 kube-system       Active   3m10s
+```
+
+```text
 NAMESPACE     NAME                                      READY   STATUS      RESTARTS   AGE
 kube-system   coredns-5688c889c9-ltjlc                  1/1     Running     0          3m
 kube-system   helm-install-traefik-crd-xmjx8            0/1     Completed   0          3m1s
@@ -388,6 +440,9 @@ grep -q 'KUBE_CONFIG_PATH' ~/.bashrc || echo 'export KUBE_CONFIG_PATH=$HOME/.kub
 export KUBE_CONFIG_PATH=$HOME/.kube/config
 echo "$KUBE_CONFIG_PATH"
 ```
+
+> [!NOTE]
+> Terraform reads `KUBE_CONFIG_PATH` only in the terminal where it runs. A terminal that you opened before this step does not have the variable. Run the `export` line again there, or open a new terminal.
 
 You will see the path to the kubeconfig file:
 ```bash
@@ -606,7 +661,9 @@ The symbols mean:
 `terraform apply` makes a new plan and then performs the actions in it.
 Without `-auto-approve`, it prints the plan and waits for you to type `yes`.
 The labs use `-auto-approve` so the commands run without a prompt.
-When you work on shared infrastructure, read the plan and answer the prompt yourself.
+
+> [!WARNING]
+> `-auto-approve` applies the plan without showing you a prompt. On shared infrastructure, read the plan first and type `yes` yourself.
 
 ```bash
 terraform apply -auto-approve
@@ -854,6 +911,9 @@ Someone fixes a problem late at night and raises the pod limit in dev with kubec
 The cluster now differs from the code.
 This difference is called drift.
 
+> [!IMPORTANT]
+> The next `terraform apply` restores the value from the code, so a manual change does not last. Make changes in the code instead.
+
 ```bash
 kubectl -n flightops-dev patch resourcequota quota --type merge -p '{"spec":{"hard":{"pods":"50"}}}'
 kubectl -n flightops-dev get resourcequota quota -o jsonpath='{.spec.hard.pods}{"\n"}'
@@ -910,7 +970,8 @@ Terraform only converges when someone runs it.
 If nobody runs Terraform after a manual change, the drift stays.
 In Lab 05, a pipeline runs Terraform on every change and shows you drift in its plan.
 
-If the manual change was right, the fix is to change the code (the variable) and apply, so that code and cluster agree again.
+> [!TIP]
+> If the manual change was right, the fix is to change the code (the variable) and apply, so that code and cluster agree again.
 
 ## Part 5: A database module
 
@@ -1212,7 +1273,9 @@ This module is not yet installed. Run "terraform init" to install all modules re
 ```
 
 Terraform reads modules from its working directory (`.terraform/modules`), not from your source folders.
-Every time you add a module or a provider, run `terraform init` again.
+
+> [!NOTE]
+> Every time you add a module or a provider, run `terraform init` again.
 
 ```bash
 terraform init
@@ -1256,7 +1319,9 @@ Changes to Outputs:
 
 Ten resources: five per environment.
 Terraform shows the Secret data as `(sensitive value)` in the plan.
-It still writes the real values into the state. Lab 06 comes back to this.
+
+> [!WARNING]
+> Terraform hides the value in the plan, but it still writes the real password into `terraform.tfstate`. Treat the state file as a secret. Lab 06 comes back to this.
 
 ```bash
 terraform apply -auto-approve
@@ -1369,17 +1434,21 @@ You start with version history.
 ### 6.1 Create the repository in Harness
 
 In the Harness UI (http://localhost:3000), open the `flightops` project.
-Select **Repositories**, then **New Repository**.
-Enter the name `platform`. Do not add a README, license or .gitignore, because you push existing files.
-Select **Create Repository**.
-
+Select **Repositories**, then **New Repository** (1).
 
 <!-- shots:begin -->
-<img src="img/04-terraform-foundations/01-create_repo-1.png" alt="Create the repository, step 1 of 3">
+<img src="img/04-terraform-foundations/create-a-new-repository.png" alt="Repositories page: (1) New Repository button">
 
-<img src="img/04-terraform-foundations/01-create_repo-2.png" alt="Create the repository, step 2 of 3">
+In the **Name** field (1), enter `platform`. In the **Description** field (2), enter `Infra platform code`. Keep **Private** (3) selected.
+> [!IMPORTANT]
+> Do not add a README, license or .gitignore. The repository must start empty, because you push existing files. Otherwise the first push is rejected.
+Select **Create Repository** (4).
 
-<img src="img/04-terraform-foundations/01-create_repo-3.png" alt="Create the repository, step 3 of 3">
+<img src="img/04-terraform-foundations/fill-create-repository-platform.png" alt="Create a repository dialog: (1) Name platform, (2) Description, (3) Private, (4) Create Repository">
+
+Copy the **HTTP** clone URL (1). Step 6.3 uses it as the remote.
+
+<img src="img/04-terraform-foundations/git-platform-repo-created.png" alt="platform repository page: (1) HTTP clone URL">
 
 <!-- shots:end -->
 
@@ -1395,7 +1464,16 @@ Three kinds of files must not go into Git:
 
 The lock file `.terraform.lock.hcl` does go into Git.
 
+> [!CAUTION]
+> Git keeps every version of a file that was ever committed. Deleting the file later does not remove its contents from the history, so a state file that was committed once stays readable. Keep it out of Git from the start.
+
 Create `~/platform/.gitignore`:
+
+```bash
+touch ~/platform/.gitignore
+```
+
+In the VS Code editor, open `~/platform/.gitignore` and add the following content:
 
 <!-- file: ~/platform/.gitignore -->
 ```text
@@ -1411,6 +1489,8 @@ Create `~/platform/.gitignore`:
 `git init -q` creates the repository without printing messages. `git checkout -b main` names its first branch `main`.
 Newer Git versions can do both with `git init -b main`, but that option needs Git 2.28 or newer, and some lab machines have an older Git.
 
+In the terminal, run the following commands:
+
 ```bash
 cd ~/platform
 git init -q
@@ -1419,7 +1499,8 @@ git add .
 git status --short
 ```
 
-Check the list before you commit. There must be no `.tfstate` file and nothing under `.terraform/`.
+> [!IMPORTANT]
+> Check the list before you commit. There must be no `.tfstate` file and nothing under `.terraform/`. If you see either, stop and check `~/platform/.gitignore` before you commit.
 
 ```text
 Switched to a new branch 'main'
@@ -1437,10 +1518,40 @@ A  variables.tf
 A  versions.tf
 ```
 
+Let's commit and push the changes to the repository:
+
 ```bash
 git commit -m "Platform: k3d cluster, namespaces, quotas and databases"
 git remote add origin http://localhost:3000/git/flightops/platform.git
 git push -u origin main
+```
+
+You should see output similar to this:
+
+```
+[main (root-commit) 38a6ca6] Platform: k3d cluster, namespaces, quotas and databases
+ 12 files changed, 343 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 .terraform.lock.hcl
+ create mode 100644 cluster/k3d-devops.yaml
+ create mode 100644 databases.tf
+ create mode 100644 modules/postgres/main.tf
+ create mode 100644 modules/postgres/outputs.tf
+ create mode 100644 modules/postgres/variables.tf
+ create mode 100644 modules/postgres/versions.tf
+ create mode 100644 namespaces.tf
+ create mode 100644 outputs.tf
+ create mode 100644 variables.tf
+ create mode 100644 versions.tf
+Enumerating objects: 17, done.
+Counting objects: 100% (17/17), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (15/15), done.
+Writing objects: 100% (17/17), 5.05 KiB | 1.26 MiB/s, done.
+Total 17 (delta 0), reused 0 (delta 0), pack-reused 0
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      main -> main
+branch 'main' set up to track 'origin/main'
 ```
 
 Git uses the token that the credential helper stored in Lab 01, so it does not ask for a password.
@@ -1453,7 +1564,12 @@ test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD
 ### 6.4 Look at the repository
 
 In Harness, open **Repositories** > **platform**.
-You see the files and your commit.
+You see the files, such as `databases.tf` and `namespaces.tf`, and your commit **Platform: k3d cluster, namespaces, quotas and databases**.
+
+<!-- shots:begin -->
+<img src="img/04-terraform-foundations/platform-repo-pushed-code.png" alt="platform repository Files tab: cluster and modules folders, .gitignore, .terraform.lock.hcl, databases.tf, namespaces.tf and the commit Platform: k3d cluster, namespaces, quotas and databases">
+<!-- shots:end -->
+
 The state file is not there. It is still on your disk, and only on your disk.
 If your lab machine broke now, the code would be safe, but Terraform would no longer know which objects in the cluster it created.
 Lab 05 fixes this.
