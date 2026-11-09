@@ -1,5 +1,36 @@
 # Lab 02: Your first CI pipeline
 
+- [Lab 02: Your first CI pipeline](#lab-02-your-first-ci-pipeline)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Run the checks on your machine](#part-1-run-the-checks-on-your-machine)
+    - [1.1 Run the tests in a container](#11-run-the-tests-in-a-container)
+    - [1.2 Run the linter](#12-run-the-linter)
+  - [Part 2: Write the pipeline](#part-2-write-the-pipeline)
+    - [2.1 Create the pipeline file](#21-create-the-pipeline-file)
+    - [2.2 Read the pipeline](#22-read-the-pipeline)
+    - [2.3 Commit and push the pipeline](#23-commit-and-push-the-pipeline)
+  - [Part 3: Create and run the pipeline in Harness](#part-3-create-and-run-the-pipeline-in-harness)
+    - [3.1 Create the pipeline](#31-create-the-pipeline)
+    - [3.2 Run the pipeline](#32-run-the-pipeline)
+    - [3.3 Read the execution](#33-read-the-execution)
+  - [Part 4: Read a failed run](#part-4-read-a-failed-run)
+    - [4.1 Introduce a bug](#41-introduce-a-bug)
+    - [4.2 Run the pipeline and read the failure](#42-run-the-pipeline-and-read-the-failure)
+    - [4.3 Undo the bug](#43-undo-the-bug)
+  - [Part 5: Run the pipeline on every push](#part-5-run-the-pipeline-on-every-push)
+    - [5.1 Add a push trigger](#51-add-a-push-trigger)
+    - [5.2 Push a change](#52-push-a-change)
+  - [Part 6: Expressions and conditions](#part-6-expressions-and-conditions)
+    - [6.1 Add a report step](#61-add-a-report-step)
+  - [Part 7: A lint failure](#part-7-a-lint-failure)
+    - [7.1 Add an unused import](#71-add-an-unused-import)
+    - [7.2 Fix it](#72-fix-it)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+  - [Summary](#summary)
+
+
 Continuous integration means that every change is built and tested automatically, soon after someone pushes it. In this lab you run the lint and the tests of the flight status service on your machine, write the same steps as a Harness pipeline, run it, and read the logs of failed runs. You then add a trigger, so that every push starts the pipeline without a click, and you use expressions and conditions to report on each run.
 
 **Lecture:** L3 Pipelines and Harness · **You need:** Lab 01. On a fresh machine, run `~/intermediate-devops-companion/scripts/catch-up.sh 02` first (see the course README).
@@ -68,6 +99,9 @@ SKIPPED [1] tests/integration/test_postgres.py:51: DATABASE_URL is not set
 
 The 6 skipped tests are integration tests. They need a PostgreSQL database and run only when `DATABASE_URL` is set. Lab 03 runs them. Keep in mind that a skipped test did not check anything in this run.
 
+> [!IMPORTANT]
+> A skipped test checks nothing. `44 passed, 6 skipped` does not mean that the database code has been tested.
+
 ### 1.2 Run the linter
 
 A linter reads code without running it and reports likely mistakes, such as an unused import or a name that is never defined. A formatter rewrites code into one consistent layout. This project uses ruff for both:
@@ -102,6 +136,9 @@ mkdir -p ~/flight-status/.harness
 ```
 
 Create the file `~/flight-status/.harness/ci.yaml` in VS Code, paste the content below, and save it. Indent with spaces. YAML does not allow tabs.
+
+> [!WARNING]
+> Harness cannot read a pipeline file with wrong indentation. If Harness reports a YAML error, compare your file with the reference in Troubleshooting.
 
 <!-- vscode:begin -->
 In VS Code, open the folder `~/flight-status` with **File** > **Open Folder** if it is not open yet. Then:
@@ -196,6 +233,9 @@ Open the [Pipelines page of the `flight-status` repository](http://localhost:300
 
 Select **Create**. Harness opens the pipeline and shows your YAML.
 
+> [!IMPORTANT]
+> Push `.harness/ci.yaml` to `main` before you create the pipeline (Part 2.3). If the file is not on `main`, Harness cannot find the YAML path.
+
 <!-- shots:begin -->
 <img src="img/02-first-ci-pipeline/go-to-new-pipeline-flight-status.png" alt="Pipelines page of flight-status: (1) Pipelines in the sidebar, (2) New Pipeline button">
 
@@ -208,6 +248,9 @@ Select **Create**. Harness opens the pipeline and shows your YAML.
 The name `ci` is also the pipeline's identifier. In Lab 03, the branch rule that protects `main` refers to the pipeline by this identifier.
 
 ### 3.2 Run the pipeline
+
+> [!WARNING]
+> With Docker Engine 29, the steps fail at 0s with `client version 1.41 is too old` unless Harness runs with `GITNESS_DOCKER_API_VERSION=1.44`. If you did not add that setting in Lab 01, see the Troubleshooting section before you run the pipeline.
 
 Select **Save and Run** (1). In the dialog, keep the branch `main` and select **Run pipeline** (1). Harness creates an execution with the number 1.
 
@@ -244,6 +287,9 @@ If your run fails, use an LLM (Claude, ChatGPT, Copilot or similar) to troublesh
 3. Apply the fix. If it changes `.harness/ci.yaml`, commit and push it, then run the pipeline again.
 4. Check the new run. If it is still red, give the LLM the new error and repeat.
 
+> [!WARNING]
+> Logs can contain tokens and passwords. Remove them before you paste a log into an LLM, and never paste the contents of `~/.git-credentials`.
+
 Check the [Troubleshooting](#troubleshooting) section first, because it lists the common failures. For example, if every step fails at 0s with `Error response from daemon: client version 1.41 is too old`, follow the fix for that error.
 
 <!-- ui: view_execution flightops/flight-status ci -->
@@ -264,6 +310,9 @@ The steps ran as containers on your own machine, started by the Harness containe
 You will spend much of your time with pipelines on runs that failed. You practise reading a failure now, with a bug that you know about.
 
 The `sed` command below edits `rules.py`, so that a flight may go from SCHEDULED straight to ARRIVED. `git diff` shows the change.
+
+> [!NOTE]
+> This commit puts a bug on the `main` branch. That is intended: Part 4.3 reverts it.
 
 ```bash
 cd ~/flight-status
@@ -327,6 +376,9 @@ pytest ends with exit code 1 when a test fails. Harness marks a step as failed w
 
 `git revert` creates a new commit that undoes an earlier commit. The history keeps both commits: what went wrong, and that it was undone. On a shared branch, a revert is safer than rewriting history, because other people may already have the bad commit.
 
+> [!TIP]
+> Do not use `git reset` or `git push --force` to undo a commit on `main`. A force push replaces history that other people may already have fetched.
+
 ```bash
 git revert --no-edit HEAD
 git push
@@ -389,6 +441,9 @@ EOF
 git commit -am "Describe the CI pipeline in the README"
 git push
 ```
+
+> [!NOTE]
+> Every push to `main` now starts a run, including commits that fix a failed run. Each push adds a new execution.
 
 Screenshot of the execution:
 
@@ -493,6 +548,9 @@ Branch:       main
 
 Before each step's output, the log shows the script itself, in lines that start with `+`. In those lines the expressions are already replaced by their values. Lab 06 shows why this matters when a value is a secret.
 
+> [!WARNING]
+> The `+` lines print the expanded script. A secret used in an expression appears there in plain text, and anyone who can open the execution can read it.
+
 The Harness platform uses a different expression syntax for the same information, for example `<+pipeline.sequenceId>` for the run number and `<+codebase.commitSha>` for the commit.
 
 ## Part 7: A lint failure
@@ -542,6 +600,9 @@ The other steps in the run behave as follows:
 git revert --no-edit HEAD
 git push
 ```
+
+> [!TIP]
+> `ruff check --fix` removes this unused import in one step. That is the fix the `[*]` in the log refers to. A revert also works, and it keeps the history of the mistake.
 
 <!-- test
 h_wait flightops/flight-status ci success

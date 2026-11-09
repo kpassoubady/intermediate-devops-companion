@@ -100,6 +100,9 @@ Filesystem      Size  Used Avail Use% Mounted on
 /dev/sda1        78G  7.1G   71G  10% /
 ```
 
+> [!TIP]
+> If a later lab fails with `no space left on device`, run `df -h /` again and compare the `Avail` column with the output above.
+
 ## Part 2: Install the base tools
 
 ### 2.1 Install git, curl and jq
@@ -136,6 +139,9 @@ jq-1.7.1
 Every commit records an author name and email address. A shared repository shows them on each change, so the team knows who made it. You also set the name of the first branch in new repositories to `main`.
 
 Replace the name and email address with your own before you run the commands.
+
+> [!IMPORTANT]
+> Git refuses to create a commit until a name and an email address are set. Set them now, because the first commit in Part 6 uses them.
 
 ```bash
 git config --global user.name "Your Name"
@@ -201,6 +207,9 @@ The install command pins Docker Engine to major version 29 (`'docker-ce=5:29.*'`
 - `docker-buildx-plugin`, the BuildKit image builder.
 - `docker-compose-plugin`, Docker Compose, which you use on Day 3.
 
+> [!IMPORTANT]
+> Do not install a different major version of Docker Engine during the course. The labs were tested with version 29, and the fix for the API version error in Lab 02 depends on it.
+
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -220,6 +229,9 @@ On Day 2 you create a small image registry on this machine, at `k3d-registry.loc
 
 You add the setting now. Changing it later needs a restart of Docker, and a restart also restarts every running container. Use this setting only for a registry on your own lab machine. A real registry always uses TLS.
 
+> [!WARNING]
+> This setting lets Docker send images over plain HTTP to one registry. Never copy it to a shared machine or a server.
+
 ```bash
 echo '{ "insecure-registries": ["k3d-registry.localhost:5000"] }' | sudo tee /etc/docker/daemon.json
 sudo systemctl restart docker
@@ -238,6 +250,9 @@ You should see:
 ### 3.3 Run Docker without sudo
 
 The Docker daemon runs as root. Its socket, `/var/run/docker.sock`, belongs to the `docker` group. Members of that group can use Docker without `sudo`. Membership is powerful: anyone who can use the Docker socket can start a container with root access to the whole machine. That is acceptable on your own lab machine. On a shared server, treat the `docker` group like root access.
+
+> [!WARNING]
+> Membership in the `docker` group gives the same power as `root` on this machine. Only add accounts that you trust with that power.
 
 `usermod -aG docker $USER` adds your user to the group.
 
@@ -290,6 +305,9 @@ You should see one network named `devops` with the driver `bridge`.
 
 In Labs 05 and 06 you store secrets in Harness, for example the credentials that a pipeline uses to deploy to Kubernetes. Harness Open Source can encrypt secrets in its database with a key that you pass in the setting `GITNESS_ENCRYPTER_SECRET`. In version 3.3.0, which this course uses, pipeline steps cannot read secrets that were stored with that setting: a step receives the encrypted bytes instead of the value. This course therefore starts Harness without an encryption key. Harness then stores secrets unencrypted in its database, in the `harness-data` volume. Lab 06 shows what that means, and how the Harness platform stores secrets instead.
 
+> [!IMPORTANT]
+> Do not store real credentials in this Harness instance, in a repository, or in a `docker run` command. The secrets in this course are for the lab only.
+
 ### 4.3 Start Harness
 
 Harness Open Source is one container image. It contains a Git server, a web interface, an API and a pipeline engine. Its settings still use the product's earlier name, Gitness. Read what each part of the command does before you run it:
@@ -310,6 +328,9 @@ Harness Open Source is one container image. It contains a Git server, a web inte
 | `harness/harness:3.3.0` | The image and its version. A fixed version, instead of `latest`, means everyone in the class runs the same software. |
 
 The administrator password is on the command line to keep this setup short. Anyone who can run `docker inspect harness` on this machine can read it. Lab 06 comes back to this problem.
+
+> [!WARNING]
+> With Docker Engine 29, which Part 3 installs, Harness must talk to Docker with API version 1.44. Add the line `-e GITNESS_DOCKER_API_VERSION=1.44 \` after `-e GITNESS_METRIC_ENABLED=false \` in the command below. Without it, every pipeline step in Lab 02 fails at 0s with `client version 1.41 is too old`.
 
 ```bash
 docker run -d --name harness --restart always \
@@ -435,6 +456,9 @@ Harness shows the empty repository with instructions and its clone URL. The high
 
 Use the copy icon at the end of a field to copy the address.
 
+> [!TIP]
+> Use the HTTP address for every command in this course. The SSH address works only after you add an SSH key (Going further, C).
+
 <img src="./img/01-lab-environment/git-clone-url.png" alt="Git clone URLs for the flight-status repository">
 
 <!-- test
@@ -544,10 +568,16 @@ The **Create a token** dialog opens. The numbers in the second screenshot match 
 <img src="./img/01-lab-environment/enter-create-a-token-info.png" alt="Enter the token name and expiration, then generate the token">
 <!-- shots:end -->
 
+> [!NOTE]
+> The token expires after 30 days. If `git push` later fails with `Authentication failed`, the token may have expired. See Troubleshooting.
+
 Harness now shows the token. The numbers in the third screenshot match these steps:
 
 1. Select the copy icon at the end of the **Token** field and copy the token now. The icon changes to a check mark. Harness shows the token only once, so paste it into a text file for the next step.
 2. Select **Close** when you have copied the token.
+
+> [!WARNING]
+> Harness shows the token only once. If you close the dialog without copying it, delete the token in Harness and create a new one.
 
 <!-- shots:begin -->
 <img src="./img/01-lab-environment/create-a-token.png" alt="Copy the generated personal access token and select Close">
@@ -558,6 +588,9 @@ Harness now shows the token. The numbers in the third screenshot match these ste
 ### 6.5 Store the token for Git
 
 Without a credential helper, Git asks for your user name and token on every push. The `store` helper saves them in the file `~/.git-credentials` after the first successful push. The file is plain text that your user can read. That is convenient for a lab, but anyone with access to your account can read the token. Lab 06 looks at this file again and discusses safer options, such as the keychain of the operating system.
+
+> [!WARNING]
+> `~/.git-credentials` holds the token in plain text. Delete that file, and the token in Harness, when the course ends.
 
 ```bash
 git config --global credential.helper store
@@ -585,6 +618,9 @@ When Git asks for credentials, enter:
 
 - Username: `admin`
 - Password: the token you copied in step 6.4. Paste it with Ctrl+Shift+V. The terminal does not show it.
+
+> [!IMPORTANT]
+> The password for Git is the token, not your Harness password. A push with the Harness password fails, even when you type it correctly.
 
 ```bash
 git remote add origin http://localhost:3000/git/flightops/flight-status.git
@@ -665,6 +701,9 @@ Harness describes its API at http://localhost:3000/openapi.yaml. The web interfa
    ```bash
    read -rs TOKEN
    ```
+
+   > [!CAUTION]
+   > The token has the same access as your account. Do not paste it into a chat, a screenshot or shared notes.
 
 2. List the repositories of the `flightops` project. You should see `"flight-status"`.
 
