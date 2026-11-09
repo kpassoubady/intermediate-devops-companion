@@ -33,7 +33,15 @@
 
 Continuous integration means that every change is built and tested automatically, soon after someone pushes it. In this lab you run the lint and the tests of the flight status service on your machine, write the same steps as a Harness pipeline, run it, and read the logs of failed runs. You then add a trigger, so that every push starts the pipeline without a click, and you use expressions and conditions to report on each run.
 
-**Lecture:** L3 Pipelines and Harness · **You need:** Lab 01. On a fresh machine, run `~/intermediate-devops-companion/scripts/catch-up.sh 02` first (see the course README).
+**Lecture:** L3 Pipelines and Harness · **You need:** Lab 01.
+
+On a fresh machine, clone the repository and run the catch-up script first:
+
+<!-- skip -->
+```bash
+git clone https://github.com/kpassoubady/intermediate-devops-companion.git ~/intermediate-devops-companion
+~/intermediate-devops-companion/scripts/catch-up.sh 02
+```
 
 ## Goals
 
