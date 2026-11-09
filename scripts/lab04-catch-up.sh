@@ -53,8 +53,8 @@ h_create() {
 echo "=== [Lab 04] Part 1.1: Installing k3d v5.9.0 ==="
 if ! k3d version 2>/dev/null | grep -q 'v5.9.0'; then
   mkdir -p ~/downloads && cd ~/downloads
-  curl -fsSLO https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
-  curl -fsSLO https://github.com/k3d-io/k3d/releases/download/v5.9.0/checksums.txt
+  curl -fsSLO --retry 3 https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
+  curl -fsSLO --retry 3 https://github.com/k3d-io/k3d/releases/download/v5.9.0/checksums.txt
   echo "$(grep '_dist/k3d-linux-amd64$' checksums.txt | cut -d' ' -f1)  k3d-linux-amd64" | sha256sum --check
   sudo install -m 0755 k3d-linux-amd64 /usr/local/bin/k3d
 fi

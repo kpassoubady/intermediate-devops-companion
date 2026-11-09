@@ -64,8 +64,8 @@ Download the binary and the checksum list:
 
 ```bash
 mkdir -p ~/downloads && cd ~/downloads
-curl -fsSLO https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
-curl -fsSLO https://github.com/k3d-io/k3d/releases/download/v5.9.0/checksums.txt
+curl -fsSLO --retry 3 https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
+curl -fsSLO --retry 3 https://github.com/k3d-io/k3d/releases/download/v5.9.0/checksums.txt
 grep 'k3d-linux-amd64$' checksums.txt
 ```
 
@@ -355,6 +355,25 @@ kubectl get pods --all-namespaces
 
 The `kube-system` namespace holds k3s's own components: DNS (CoreDNS), the Traefik ingress controller, the local-path storage provisioner and metrics-server.
 
+You will see these components when you run the command above:
+
+```
+kubectl get pods --all-namespaces
+NAME              STATUS   AGE
+default           Active   3m10s
+kube-node-lease   Active   3m10s
+kube-public       Active   3m10s
+kube-system       Active   3m10s
+NAMESPACE     NAME                                      READY   STATUS      RESTARTS   AGE
+kube-system   coredns-5688c889c9-ltjlc                  1/1     Running     0          3m
+kube-system   helm-install-traefik-crd-xmjx8            0/1     Completed   0          3m1s
+kube-system   helm-install-traefik-rw4nz                0/1     Completed   1          3m1s
+kube-system   local-path-provisioner-67d6887d65-7zhs4   1/1     Running     0          3m
+kube-system   metrics-server-74c8c4d68b-75gn7           1/1     Running     0          3m
+kube-system   svclb-traefik-f3cdddad-q84k4              2/2     Running     0          2m51s
+kube-system   traefik-7f6d8db88c-f5msw                  1/1     Running     0          2m51s
+```
+
 ## Part 3: Your first Terraform configuration
 
 ### 3.1 Tell Terraform where the cluster is
@@ -369,6 +388,12 @@ grep -q 'KUBE_CONFIG_PATH' ~/.bashrc || echo 'export KUBE_CONFIG_PATH=$HOME/.kub
 export KUBE_CONFIG_PATH=$HOME/.kube/config
 echo "$KUBE_CONFIG_PATH"
 ```
+
+You will see the path to the kubeconfig file:
+```bash
+/home/training/.kube/config
+```
+
 
 ### 3.2 Declare the providers
 
@@ -552,6 +577,19 @@ Terraform will perform the following actions:
 Plan: 2 to add, 0 to change, 0 to destroy.
 ```
 
+You will see a message like this:
+
+```text
+Note: You didn't use the -out option to save this plan, so Terraform can't guarantee to take exactly these actions if you run "terraform
+apply" now
+```
+
+You can save the plan to a file using the `-out` option:
+
+```bash
+terraform plan -out=plan.out
+```
+
 The symbols mean:
 
 | Symbol | Action |
@@ -603,11 +641,24 @@ ls -l terraform.tfstate
 ```text
 kubernetes_namespace_v1.env["dev"]
 kubernetes_namespace_v1.env["prod"]
-
 # kubernetes_namespace_v1.env["dev"]:
 resource "kubernetes_namespace_v1" "env" {
     id                               = "flightops-dev"
-    ...
+    wait_for_default_service_account = false
+
+    metadata {
+        generation       = 0
+        labels           = {
+            "app.kubernetes.io/managed-by" = "terraform"
+            "app.kubernetes.io/part-of"    = "flightops"
+            "environment"                  = "dev"
+        }
+        name             = "flightops-dev"
+        resource_version = "1020"
+        uid              = "2bf66476-9aa2-4e7c-93ef-b2e224193bcb"
+    }
+}
+-rw-rw-r-- 1 training training 2382 Nov  9 06:46 terraform.tfstate
 ```
 
 The state is a JSON file on your disk.
@@ -644,6 +695,13 @@ Create a namespace this way:
 kubectl create namespace demo
 ```
 
+You will see a message like this:
+
+```text
+namespace/demo created
+```
+
+
 Run the same command again:
 
 <!-- expect-fail -->
@@ -663,6 +721,13 @@ Remove the demo namespace:
 
 ```bash
 kubectl delete namespace demo
+```
+
+
+You will see a message like this:
+
+```text
+namespace "demo" deleted
 ```
 
 ## Part 4: Resource limits and drift
@@ -762,6 +827,8 @@ kubectl describe resourcequota quota -n flightops-dev
 kubectl describe limitrange defaults -n flightops-dev
 ```
 
+You will see output like this:
+
 ```text
 Name:          quota
 Namespace:     flightops-dev
@@ -770,6 +837,15 @@ Resource       Used  Hard
 limits.cpu     0     4
 limits.memory  0     4Gi
 pods           0     10
+```
+
+You will see output like this:
+
+```text
+Type        Resource  Min  Max  Default Request  Default Limit  Max Limit/Request Ratio
+----        --------  ---  ---  ---------------  -------------  -----------------------
+Container   cpu       -    -    100m             500m           -
+Container   memory    -    -    128Mi            256Mi    
 ```
 
 ### 4.3 Change the quota by hand
@@ -857,6 +933,12 @@ mkdir -p ~/platform/modules/postgres
 
 Create `~/platform/modules/postgres/versions.tf` with the module's providers. A module declares the providers it uses. The root configuration chooses the versions.
 
+```bash
+# Create the file
+touch ~/platform/modules/postgres/versions.tf
+```
+
+
 <!-- file: ~/platform/modules/postgres/versions.tf -->
 ```hcl
 terraform {
@@ -872,6 +954,11 @@ terraform {
 ```
 
 Create `~/platform/modules/postgres/variables.tf` with the module's inputs. `namespace` has no default, so every caller must set it. `image` and `storage` have defaults that a caller may override.
+
+```bash
+# Create the file
+touch ~/platform/modules/postgres/variables.tf
+```
 
 <!-- file: ~/platform/modules/postgres/variables.tf -->
 ```hcl
@@ -901,6 +988,11 @@ Create `~/platform/modules/postgres/main.tf` with the module's resources. Read t
 - The Deployment runs one PostgreSQL container. It reads its settings from the Secret (`env_from`), and stores data on the volume. The `Recreate` strategy stops the old pod before it starts a new one, because only one pod may write to the volume.
 - The readiness probe runs `pg_isready`, so Kubernetes knows when the database accepts connections.
 - The Service gives the database the DNS name `postgres` inside its namespace.
+
+```bash
+# Create the file
+touch ~/platform/modules/postgres/main.tf
+```
 
 <!-- file: ~/platform/modules/postgres/main.tf -->
 ```hcl
@@ -1036,6 +1128,12 @@ resource "kubernetes_service_v1" "db" {
 
 Create `~/platform/modules/postgres/outputs.tf` with the module's output. An output passes a value back to the caller. Here it is the name of the Secret.
 
+```bash
+# Create the file
+touch ~/platform/modules/postgres/outputs.tf
+```
+
+
 <!-- file: ~/platform/modules/postgres/outputs.tf -->
 ```hcl
 output "secret_name" {
@@ -1053,6 +1151,12 @@ A `module` block calls the module.
 
 Create `~/platform/databases.tf`:
 
+```bash
+# Create the file
+touch ~/platform/databases.tf
+```
+
+
 <!-- file: ~/platform/databases.tf -->
 ```hcl
 # One PostgreSQL database per environment, built from the local module.
@@ -1067,6 +1171,13 @@ module "postgres" {
 Root outputs print useful values after each apply, and other tools can read them with `terraform output`.
 
 Create `~/platform/outputs.tf`:
+
+
+```bash
+# Create the file
+touch ~/platform/outputs.tf
+```
+
 
 <!-- file: ~/platform/outputs.tf -->
 ```hcl
@@ -1152,6 +1263,25 @@ terraform apply -auto-approve
 ```
 
 The apply takes about a minute.
+
+The output shows:
+
+```text
+Apply complete! Resources: 10 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+database_secrets = {
+  "dev" = "flight-status-db"
+  "prod" = "flight-status-db"
+}
+namespaces = [
+  "flightops-dev",
+  "flightops-prod",
+]
+```
+
+
 By default, Terraform waits until each Deployment is ready, so the databases accept connections when the command finishes.
 
 <!-- test
@@ -1184,6 +1314,8 @@ List the keys in the Secret, without the values:
 ```bash
 kubectl -n flightops-dev get secret flight-status-db -o jsonpath='{.data}' | jq 'keys'
 ```
+
+The output shows the four keys:
 
 ```text
 [
