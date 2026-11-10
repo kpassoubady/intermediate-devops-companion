@@ -192,6 +192,12 @@ Without one, Terraform uses the local file.
 
 Create `~/platform/backend.tf`:
 
+```bash
+touch ~/platform/backend.tf
+```
+
+In the file, add the following content:
+
 <!-- file: ~/platform/backend.tf -->
 ```hcl
 # Store the state in a Kubernetes Secret (tfstate-default-platform) in the
@@ -281,6 +287,23 @@ terraform plan
 ```
 
 ```text
+module.postgres["dev"].random_password.db: Refreshing state... [id=none]
+module.postgres["prod"].random_password.db: Refreshing state... [id=none]
+kubernetes_namespace_v1.env["prod"]: Refreshing state... [id=flightops-prod]
+kubernetes_namespace_v1.env["dev"]: Refreshing state... [id=flightops-dev]
+kubernetes_resource_quota_v1.env["dev"]: Refreshing state... [id=flightops-dev/quota]
+module.postgres["dev"].kubernetes_persistent_volume_claim_v1.db: Refreshing state... [id=flightops-dev/postgres-data]
+module.postgres["dev"].kubernetes_secret_v1.db: Refreshing state... [id=flightops-dev/flight-status-db]
+kubernetes_limit_range_v1.env["dev"]: Refreshing state... [id=flightops-dev/defaults]
+module.postgres["prod"].kubernetes_secret_v1.db: Refreshing state... [id=flightops-prod/flight-status-db]
+kubernetes_resource_quota_v1.env["prod"]: Refreshing state... [id=flightops-prod/quota]
+kubernetes_limit_range_v1.env["prod"]: Refreshing state... [id=flightops-prod/defaults]
+module.postgres["dev"].kubernetes_service_v1.db: Refreshing state... [id=flightops-dev/postgres]
+module.postgres["prod"].kubernetes_persistent_volume_claim_v1.db: Refreshing state... [id=flightops-prod/postgres-data]
+module.postgres["prod"].kubernetes_service_v1.db: Refreshing state... [id=flightops-prod/postgres]
+module.postgres["prod"].kubernetes_deployment_v1.db: Refreshing state... [id=flightops-prod/postgres]
+module.postgres["dev"].kubernetes_deployment_v1.db: Refreshing state... [id=flightops-dev/postgres]
+
 No changes. Your infrastructure matches the configuration.
 ```
 
@@ -302,6 +325,9 @@ git add backend.tf bootstrap/
 git commit -m "Store Terraform state in the cluster"
 git push
 ```
+
+> [!NOTE]
+> This push goes straight to `main`. Unlike `flight-status` in Lab 03, the `platform` repository has no branch rule, so direct pushes are allowed. You set up the pipeline in this lab, and Part 5 then changes infrastructure through a branch and a pull request.
 
 ## Part 3: A credential for the pipeline
 
@@ -487,6 +513,9 @@ git add .harness/infra.yaml
 git commit -m "Add the infra pipeline"
 git push
 ```
+
+> [!NOTE]
+> This is another direct push to `main`, allowed because `platform` has no branch rule. The pipeline does not exist in Harness yet, so this push does not start a run.
 
 ### 4.3 Create the pipeline in Harness
 

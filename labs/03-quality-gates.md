@@ -1047,6 +1047,15 @@ Think about these questions:
 - **The pull request shows no check**: The default pull request trigger may be disabled. Open the pipeline settings, tab Triggers. You can also start a run on the branch with **Run** and the branch `feature/departures`.
 - **The merge button stays disabled after the check passed**: Reload the page. If the rule asks for approvals, edit the rule and remove the approval requirement.
 - **`error: the branch 'feature/departures' is not fully merged`**: You used `git branch -d`. After a squash merge, use `git branch -D`.
+- **A push to `main` is rejected with `Rule "protect-main" violation: Push to branch "main" is not allowed`**: You committed on `main` instead of a branch, and the branch rule blocked the push. The commit is safe in your local repository, and the server has not changed. Move the commit to a branch, push the branch and reset local `main`:
+
+  ```bash
+  git switch -c feature/my-change
+  git push -u origin feature/my-change
+  git branch -f main origin/main
+  ```
+
+  Then open a pull request from `feature/my-change` to `main`, as in Part 4. Run `git fetch origin` first if `origin/main` may be out of date. To throw the commit away instead, use `git reset --hard origin/main` as in step 3.3. In later labs, create a branch with `git switch -c <name>` before your first commit.
 - **Permission denied when you save a file**: A container wrote the file as root. Give the files back to your user with `sudo chown -R $USER: ~/flight-status`.
 
 <!-- runner: stop -->
