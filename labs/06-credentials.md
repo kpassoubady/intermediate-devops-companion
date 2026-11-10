@@ -1030,14 +1030,12 @@ Secret scanning stops a secret from being stored in Git in the first place.
 
 ### 4.1 Turn it on
 
-In the Harness UI, open **Repositories** > **flight-status** > **Settings** > **Security**.
-Turn on **Secret scanning** and save.
-
+In the Harness UI, select **Manage Repository** (1) under **Repositories**, in the **flight-status** (2) repository.
+Open the **Security** tab.
+Turn on the **Secret Scanning** toggle (3), then select **Save** (4).
 
 <!-- shots:begin -->
-<img src="img/06-credentials/09-enable_secret_scanning-1.png" alt="Turn on secret scanning, step 1 of 2">
-
-<img src="img/06-credentials/09-enable_secret_scanning-2.png" alt="Turn on secret scanning, step 2 of 2">
+<img src="img/06-credentials/toggle-secret-scanning-flight-status.png" alt="Manage Repository, Security tab for flight-status: (1) Manage Repository, (2) flight-status, (3) Secret Scanning toggle, (4) Save">
 
 <!-- shots:end -->
 
@@ -1055,13 +1053,32 @@ cd ~/flight-status
 git switch -c feature/aws-config
 ```
 
+The output will be:
+
+```text
+Switched to a new branch 'feature/aws-config'
+training@ip-172-31-29-52:~/flight-status$ 
+```
+
 Create `~/flight-status/config.ini` with the two example keys. The `printf` commands join each value from two parts. The only reason is that this lab file is itself stored on GitHub, and GitHub scans it for keys too. The file on your machine contains the complete values.
 
 ```bash
-printf 'aws_access_key_id = %s%s\n' 'AKIAIOSFODNN7' 'EXAMPLE' > config.ini
-printf 'aws_secret_access_key = %s%s\n' 'wJalrXUtnFEMI/K7MDENG' '/bPxRfiCYEXAMPLEKEY' >> config.ini
-cat config.ini
+touch ~/flight-status/config.ini
+printf 'aws_access_key_id = %s%s\n' 'AKIAIOSFODNN7' 'EXAMPLE' > ~/flight-status/config.ini
+printf 'aws_secret_access_key = %s%s\n' 'wJalrXUtnFEMI/K7MDENG' '/bPxRfiCYEXAMPLEKEY' >> ~/flight-status/config.ini
+cat ~/flight-status/config.ini
 ```
+
+The output will be
+
+```text
+aws_access_key_id = AKIAIOSFODNN7EXAMPLE
+aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+```
+
+In the VS Code Explorer, open **config.ini** (1). The file shows the two keys (2).
+
+<img src="img/06-credentials/vscode-config-ini.png" alt="VS Code editing config.ini: (1) config.ini in the Explorer, (2) the aws_access_key_id and aws_secret_access_key lines">
 
 > [!WARNING]
 > Use only the example keys from this lab. Never put a real credential in a file inside a repository, even on a branch that you plan to delete. A commit keeps the value in the Git history.
@@ -1072,6 +1089,15 @@ git commit -m "Add AWS configuration"
 ```
 
 The commit works: it only changes your local repository.
+
+The output will be:
+
+```text
+[feature/aws-config 0b0c23c] Add AWS configuration
+ 1 file changed, 2 insertions(+)
+ create mode 100644 config.ini
+```
+
 The push sends it to Harness:
 
 <!-- expect-fail -->
@@ -1092,6 +1118,10 @@ remote:       Details:      Identified a pattern that may indicate AWS credentia
 
 Harness rejected the push. The key is not in the repository on the server.
 
+In your terminal, the red arrow marks the secret that Harness found in **config.ini**. The yellow arrow marks the **remote rejected** line.
+
+<img src="img/06-credentials/harness-rejection.png" alt="Terminal output of git push -u origin feature/aws-config: red arrow at the aws-access-token finding in config.ini, yellow arrow at the remote rejected line (pre-receive hook declined)">
+
 ### 4.3 Clean up
 
 The commit exists only on your machine. Delete the branch:
@@ -1102,6 +1132,14 @@ The commit exists only on your machine. Delete the branch:
 ```bash
 git switch main
 git branch -D feature/aws-config
+```
+
+The output will be:
+
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+Deleted branch feature/aws-config (was 0b0c23c)
 ```
 
 If a real key reaches a shared repository, removing the commit is not enough.
@@ -1188,7 +1226,22 @@ git commit -am "Rotate the dev deployer token"
 git push -u origin rotate-dev-token
 ```
 
-Open a pull request from `rotate-dev-token` to `main` with the title `Rotate the dev deployer token`.
+The output will be:
+
+```text
+...
+...
+remote: 
+remote: Create a pull request for "rotate-dev-token" by visiting:
+remote:   http://localhost:3000/flightops/platform/pulls/compare/main...rotate-dev-token
+remote: 
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      rotate-dev-token -> rotate-dev-token
+branch 'rotate-dev-token' set up to track 'origin/rotate-dev-token'.
+```
+
+
+Open a pull request from `rotate-dev-token` to `main` with the title `Rotate the dev deployer token`. The push output printed this link, and you can open it directly: <http://localhost:3000/flightops/platform/pulls/compare/main...rotate-dev-token>
 The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: open_pr flightops/platform rotate-dev-token main "Rotate the dev deployer token" -->
@@ -1220,6 +1273,9 @@ h_wait flightops/platform infra success --branch main
 > [!IMPORTANT]
 > The merge deletes `deployer-token-v1`. Any kubeconfig that still holds the old token stops working, which is what step 5.4 shows.
 
+> [!WARNING]
+> Merge the pull request and wait for the `infra` run on `main` to finish before you run the next command. If `git pull` says `Already up to date`, or the Secret below still shows `deployer-token-v1`, the pull request is not merged yet. Go back and merge it.
+
 ```bash
 git switch main && git pull
 kubectl -n flightops-dev get secrets -l app.kubernetes.io/component=deployer-token
@@ -1231,6 +1287,9 @@ deployer-token-v2   kubernetes.io/service-account-token   3      20s
 ```
 
 ### 5.4 The old credential stops working
+
+> [!IMPORTANT]
+> Continue only if the Secret list in step 5.3 shows `deployer-token-v2` and no `deployer-token-v1`. If the command below prints the deployments instead of an error, the pull request is not merged yet. Merge it, wait for the `infra` run on `main`, and run the command again.
 
 <!-- test
 for i in $(seq 1 30); do
@@ -1270,19 +1329,13 @@ postgres   1/1     1            1           3h
 
 ### 5.6 Update the Harness secret
 
-In the Harness UI, open **Secrets** > `dev_kubeconfig`, edit it, paste the content of the new `~/deployer-dev.kubeconfig` as the value, and save.
+In the Harness UI, select **Secrets** (1). On the `dev_kubeconfig` row (2), open the three-dot menu and select **Edit** (3).
 
+<img src="img/06-credentials/dev-kubeconfig-edit.png" alt="Harness Secrets page: (1) Secrets, (2) dev_kubeconfig row, (3) Edit in the three-dot menu">
 
-<!-- shots:begin -->
-<img src="img/06-credentials/12-update_secret-1.png" alt="Update the secret, step 1 of 4">
+In the **Update secret** dialog, replace the **Value** (1) with the content of the new `~/deployer-dev.kubeconfig`. Then select **Update secret** (2).
 
-<img src="img/06-credentials/12-update_secret-2.png" alt="Update the secret, step 2 of 4">
-
-<img src="img/06-credentials/12-update_secret-3.png" alt="Update the secret, step 3 of 4">
-
-<img src="img/06-credentials/12-update_secret-4.png" alt="Update the secret, step 4 of 4">
-
-<!-- shots:end -->
+<img src="img/06-credentials/update-secret-dev-kube-config-form.png" alt="Update secret dialog for dev_kubeconfig: (1) Value with the new kubeconfig pasted, (2) Update secret">
 
 <!-- ui: update_secret flightops dev_kubeconfig @~/deployer-dev.kubeconfig -->
 
