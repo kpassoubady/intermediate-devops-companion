@@ -126,6 +126,9 @@ The rule stays in the list, with its toggle in the off state.
 <img src="img/04-terraform-foundations/toggle-off-state-at-the-project-level.png" alt="Project Rules page after the change: protect-main with its toggle in the off state">
 <!-- shots:end -->
 
+> [!CAUTION]
+> Switching off the project-level rule removes protection from every repository in the project that has no rule of its own. Finish Step 1 first, or `flight-status` is left unprotected.
+
 In this lab you create files in a new folder, `~/platform`.
 When a step shows a file with its path, create that file in VS Code and paste the content.
 If you do not use VS Code, the Text Editor app works too.
@@ -486,6 +489,9 @@ echo "$KUBE_CONFIG_PATH"
 > [!NOTE]
 > Terraform reads `KUBE_CONFIG_PATH` only in the terminal where it runs. A terminal that you opened before this step does not have the variable. Run the `export` line again there, or open a new terminal.
 
+> [!CAUTION]
+> Terraform works on the current kubectl context. Before you run `terraform apply`, check that `kubectl config current-context` prints `k3d-devops`. Otherwise Terraform changes a different cluster.
+
 You will see the path to the kubeconfig file:
 ```bash
 /home/training/.kube/config
@@ -687,6 +693,9 @@ You can save the plan to a file using the `-out` option:
 terraform plan -out=plan.out
 ```
 
+> [!CAUTION]
+> A saved plan can contain secret values in readable form, and `.gitignore` in step 6.2 does not list it. Delete it with `rm plan.out` before you reach Part 6, or `git add .` stages it.
+
 The symbols mean:
 
 | Symbol | Action |
@@ -764,6 +773,9 @@ The state is a JSON file on your disk.
 It is fine for one person learning Terraform.
 Lab 05 moves it to a place that a team and a pipeline can share.
 
+> [!CAUTION]
+> Do not edit or delete `terraform.tfstate` by hand. Without it, Terraform no longer knows that it created the namespaces, and the next `terraform apply` fails with `already exists` errors.
+
 ### 3.10 Run the plan again
 
 Run the same plan a second time:
@@ -817,6 +829,9 @@ A script built from imperative commands must check the current state before each
 Terraform does that comparison for you, which is why the second `terraform plan` above reported no changes.
 
 Remove the demo namespace:
+
+> [!CAUTION]
+> Deleting a namespace deletes everything in it, with no confirmation prompt. Check the name before you press Enter, and never run this command against `flightops-dev` or `flightops-prod`.
 
 ```bash
 kubectl delete namespace demo
@@ -1371,6 +1386,9 @@ terraform apply -auto-approve
 
 The apply takes about a minute.
 
+> [!NOTE]
+> The first apply pulls the `postgres:17-alpine` image, so it can take longer on a slow connection. If the apply ends with a timeout error, check the pod with the commands in the Troubleshooting section and run `terraform apply -auto-approve` again.
+
 The output shows:
 
 ```text
@@ -1432,6 +1450,9 @@ The output shows the four keys:
   "POSTGRES_USER"
 ]
 ```
+
+> [!NOTE]
+> Kubernetes stores Secret values as base64, which is an encoding and not encryption. Anyone who can read the Secret can decode its values, so access to Secrets is controlled with permissions on the namespace.
 
 Run a query inside the database container to prove that PostgreSQL works:
 
@@ -1509,6 +1530,9 @@ The lock file `.terraform.lock.hcl` does go into Git.
 > [!CAUTION]
 > Git keeps every version of a file that was ever committed. Deleting the file later does not remove its contents from the history, so a state file that was committed once stays readable. Keep it out of Git from the start.
 
+> [!NOTE]
+> `.gitignore` only affects files that Git does not track yet. If a file is already committed, adding it to `.gitignore` does not remove it from the repository.
+
 Create `~/platform/.gitignore`:
 
 ```bash
@@ -1530,6 +1554,9 @@ In the VS Code editor, open `~/platform/.gitignore` and add the following conten
 
 `git init -q` creates the repository without printing messages. `git checkout -b main` names its first branch `main`.
 Newer Git versions can do both with `git init -b main`, but that option needs Git 2.28 or newer, and some lab machines have an older Git.
+
+> [!CAUTION]
+> Run `git init` only inside `~/platform`. In another folder, such as your home directory, `git add .` stages every file in it.
 
 In the terminal, run the following commands:
 
@@ -1598,6 +1625,9 @@ branch 'main' set up to track 'origin/main'
 
 Git uses the token that the credential helper stored in Lab 01, so it does not ask for a password.
 
+> [!NOTE]
+> This push goes straight to `main`. It works because you switched off the project-level rule at the start of this lab, and `platform` has no rule of its own yet. The `-u` option makes `origin/main` the upstream of your local `main`, so later `git push` and `git pull` need no arguments.
+
 <!-- test
 cd ~/platform
 test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
@@ -1637,6 +1667,9 @@ In the Harness platform, Terraform runs inside pipelines: Harness CD has Terrafo
 - **Draw the dependency graph.** Install Graphviz (`sudo apt-get install -y graphviz`), then run `terraform graph | dot -Tsvg > graph.svg` and open `graph.svg` in the browser. Find the arrows from the Deployment to the Secret and to the storage claim.
 - **Add and remove an environment.** Add a `staging` entry to `variables.tf` with smaller limits. Run `terraform plan`: it adds a namespace, a quota, a limit range and a database. Apply it, then remove the entry and apply again. Terraform destroys everything it created for staging. Do not commit this change.
 - **Find the volume on the node.** The local-path provisioner stores volumes in the k3s container: `docker exec k3d-devops-server-0 ls /var/lib/rancher/k3s/storage`.
+
+> [!CAUTION]
+> Removing an environment from `variables.tf` and applying destroys its database and the data on its volume. Do this only on a throwaway environment such as `staging`, never on `dev` or `prod`.
 
 ## Summary
 
