@@ -1,5 +1,45 @@
 # Lab 05: Terraform in the pipeline
 
+- [Lab 05: Terraform in the pipeline](#lab-05-terraform-in-the-pipeline)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Why the state must move](#part-1-why-the-state-must-move)
+    - [1.1 The problems with a local state file](#11-the-problems-with-a-local-state-file)
+    - [1.2 Create the objects Terraform needs before it can run](#12-create-the-objects-terraform-needs-before-it-can-run)
+  - [Part 2: Move the state into the cluster](#part-2-move-the-state-into-the-cluster)
+    - [2.1 Configure the backend](#21-configure-the-backend)
+    - [2.2 Migrate the state](#22-migrate-the-state)
+    - [2.3 Look at the stored state](#23-look-at-the-stored-state)
+    - [2.4 Remove the local copy](#24-remove-the-local-copy)
+    - [2.5 Commit the change](#25-commit-the-change)
+  - [Part 3: A credential for the pipeline](#part-3-a-credential-for-the-pipeline)
+    - [3.1 Why the pipeline gets its own credential](#31-why-the-pipeline-gets-its-own-credential)
+    - [3.2 Write the kubeconfig](#32-write-the-kubeconfig)
+    - [3.3 Test it from your machine](#33-test-it-from-your-machine)
+    - [3.4 Store it as a Harness secret](#34-store-it-as-a-harness-secret)
+  - [Part 4: The infrastructure pipeline](#part-4-the-infrastructure-pipeline)
+    - [4.1 Write the pipeline](#41-write-the-pipeline)
+    - [4.2 Commit and push](#42-commit-and-push)
+    - [4.3 Create the pipeline in Harness](#43-create-the-pipeline-in-harness)
+    - [4.4 Add a push trigger](#44-add-a-push-trigger)
+    - [4.5 Run it by hand](#45-run-it-by-hand)
+  - [Part 5: Change infrastructure through a pull request](#part-5-change-infrastructure-through-a-pull-request)
+    - [5.1 Make the change on a branch](#51-make-the-change-on-a-branch)
+    - [5.2 Push the branch and open a pull request](#52-push-the-branch-and-open-a-pull-request)
+    - [5.3 Review the plan](#53-review-the-plan)
+    - [5.4 Merge](#54-merge)
+    - [5.5 Check the cluster and update your copy](#55-check-the-cluster-and-update-your-copy)
+  - [Part 6: Detect drift](#part-6-detect-drift)
+    - [6.1 Change the quota by hand](#61-change-the-quota-by-hand)
+    - [6.2 Run the pipeline](#62-run-the-pipeline)
+    - [6.3 Read the plan](#63-read-the-plan)
+    - [6.4 Correct the drift](#64-correct-the-drift)
+  - [Part 7: How locking works](#part-7-how-locking-works)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+  - [Summary](#summary)
+
+
 At the end of Lab 04, the Terraform state is a file on your lab machine.
 Nobody else can see it, nothing stops two people from changing it at the same time, and it contains database passwords.
 In this lab you move the state into the cluster, give the pipeline its own credential, and build a Harness pipeline for the `platform` repository.
@@ -282,6 +322,7 @@ Delete it and its backup.
 Then run a plan: Terraform now reads the state from the cluster.
 
 ```bash
+cd ~/platform
 rm -f terraform.tfstate terraform.tfstate.backup
 terraform plan
 ```
@@ -319,15 +360,61 @@ If the plan wanted to create every resource, Terraform did not find the state. S
 ### 2.5 Commit the change
 
 The backend configuration and the bootstrap file are part of the platform code.
+Commit them on a branch, and merge them through a pull request, as you did for `flight-status` in Lab 03.
 
 ```bash
+cd ~/platform
+git switch -c store-tf-state
 git add backend.tf bootstrap/
 git commit -m "Store Terraform state in the cluster"
-git push
+git push -u origin store-tf-state
 ```
 
-> [!NOTE]
-> This push goes straight to `main`. Unlike `flight-status` in Lab 03, the `platform` repository has no branch rule, so direct pushes are allowed. You set up the pipeline in this lab, and Part 5 then changes infrastructure through a branch and a pull request.
+The output will like the below one:
+
+```text
+....
+....
+remote: 
+remote: Create a pull request for "store-tf-state" by visiting:
+remote:   http://localhost:3000/flightops/platform/pulls/compare/main...store-tf-state
+remote: 
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      store-tf-state -> store-tf-state
+branch 'store-tf-state' set up to track 'origin/store-tf-state'.
+```
+
+Harness shows a banner for the branch you just pushed. Select **Compare & pull request** (1).
+If the banner is not there, open **Repositories** > **platform** > **Pull Requests** > **New Pull Request**, and choose `store-tf-state` as the source branch and `main` as the target.
+
+<!-- shots:begin -->
+<img src="img/05-terraform-pipeline/click-compare-pr.png" alt="platform repository page with the banner You pushed to store-tf-state: (1) Compare & pull request button">
+
+The title `Store Terraform state in the cluster` is already filled in. Check it, then select **Create pull request** (1).
+
+<img src="img/05-terraform-pipeline/click-create-pr.png" alt="Comparing Changes page: base main, compare store-tf-state, title Store Terraform state in the cluster, and (1) Create pull request button">
+
+On the pull request page, select **Squash and merge** (1).
+
+<img src="img/05-terraform-pipeline/squash-merge.png" alt="Pull request Conversation tab: (1) Squash and merge button, with Pull request can be merged above it">
+
+In the dialog, select **Confirm Squash and merge**.
+
+<img src="img/05-terraform-pipeline/confirm-square-merge.png" alt="Squash and merge dialog: Confirm Squash and merge button, with the commit title Store Terraform state in the cluster (#1)">
+
+The pull request shows **Merged**.
+
+<img src="img/05-terraform-pipeline/after-squash-merge.png" alt="Merged pull request #1: Merged status and the Revert and Delete Branch buttons">
+<!-- shots:end -->
+
+Update your local copy and delete the branch:
+
+```bash
+git switch main
+git pull
+git branch -D store-tf-state
+```
+
 
 ## Part 3: A credential for the pipeline
 
@@ -507,15 +594,25 @@ The steps share the workspace, so the providers that the plan step downloaded in
 
 ### 4.2 Commit and push
 
+Commit the pipeline on a branch, and merge it through a pull request, as in step 2.5.
+
 ```bash
 cd ~/platform
+git switch -c add-infra-pipeline
 git add .harness/infra.yaml
 git commit -m "Add the infra pipeline"
-git push
+git push -u origin add-infra-pipeline
 ```
 
-> [!NOTE]
-> This is another direct push to `main`, allowed because `platform` has no branch rule. The pipeline does not exist in Harness yet, so this push does not start a run.
+Open a pull request from `add-infra-pipeline` to `main`, and squash merge it.
+The pipeline does not exist in Harness yet, so this pull request does not start a run.
+Update your local copy and delete the branch:
+
+```bash
+git switch main
+git pull
+git branch -D add-infra-pipeline
+```
 
 ### 4.3 Create the pipeline in Harness
 

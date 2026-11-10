@@ -315,7 +315,7 @@ The push trigger starts the pipeline. Open the run in Harness and look at:
 
 So far the pipeline found problems after they reached `main`. A branch rule moves the check in front of `main`. Every change must then arrive through a pull request, and a pull request can merge only after the `ci` pipeline passes on it. A check that a change must pass before it may continue is called a quality gate.
 
-In the `flight-status` repository, open **Settings** (1) in the sidebar, then the **Rules** tab. Select **New branch rule** (2). You can also go straight to http://localhost:3000/settings/flightops/project/rules (3).
+In the `flightops` project, open **Settings** (1) in the sidebar, then the **Rules** tab. Select **New branch rule** (2). You can also go straight to http://localhost:3000/settings/flightops/project/rules (3).
 
 <!-- shots:begin -->
 <img src="img/03-quality-gates/Goto-new-branch-rule.png" alt="Project Settings Rules page: (1) Settings in the sidebar, (2) New branch rule button, (3) the Rules page URL in the address bar">
@@ -358,6 +358,9 @@ h_api GET /api/v1/repos/flightops%2Fflight-status/rules | jq -e '.[] | select(.i
 -->
 
 The status check `ci` is the identifier of your pipeline. Harness reports every pipeline run as a check on the commit that it built.
+
+> [!IMPORTANT]
+> You created the rule in the project settings, so it applies to every repository in the `flightops` project, not only `flight-status`. The `platform` repository from Labs 04 and 05 is covered too. Each covered repository must report a `ci` check before its pull requests can merge, so a repository without a pipeline named `ci` cannot merge pull requests under this rule.
 
 ### 3.2 Try to push to main without a pull request
 

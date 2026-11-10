@@ -92,6 +92,40 @@ Harness answers with HTTP 200
 
 If `docker ps` reports `permission denied`, run `newgrp docker` in this terminal and try again (Lab 01 explains why).
 
+Lab 03 protected `main` with a rule at the project level, so the rule also covers the `platform` repository that you create in this lab.
+Protection for `platform` comes later, with its own pipeline check in Lab 05.
+So this lab moves the protection of `flight-status` to a rule in its own repository, and switches off the project-level rule.
+Do the steps in this order, so that `flight-status` is never left without a rule.
+
+**Step 1: Create the rule in `flight-status`.**
+In Harness, open the `flight-status` repository, select **Manage Repository** (1), then the **Rules** tab. Select **New branch rule** (2).
+
+<!-- shots:begin -->
+<img src="img/04-terraform-foundations/flight-status-project-level-rule.png" alt="flight-status repository Rules tab: (1) Manage Repository in the sidebar, (2) New branch rule button">
+
+Enter the same settings as the rule in Lab 03:
+
+- Name `protect-main` (1), with the description `Protect Main` (2).
+- **Default branch** (3) checked.
+- **Block deletion** (4) and **Block force push** (5) checked.
+- **Require pull request** (6) checked.
+- **Require status checks to pass** (7) checked, with the status check `ci` (8).
+
+Select **Create rule** (9).
+
+<img src="img/04-terraform-foundations/change-main-protection-at-flight-status-level.png" alt="Create Branch Rule form for flight-status: (1) Name protect-main, (2) Description, (3) Default branch, (4) Block deletion, (5) Block force push, (6) Require pull request, (7) Require status checks to pass, (8) ci status check, (9) Create rule button">
+<!-- shots:end -->
+
+**Step 2: Switch off the project-level rule.**
+Open http://localhost:3000/settings/flightops/project/rules and switch off the toggle next to `protect-main`.
+The rule stays in the list, with its toggle in the off state.
+
+<!-- shots:begin -->
+<img src="img/04-terraform-foundations/disable-project-level-branch-protection.png" alt="Project Rules page: the toggle next to protect-main, which switches the project-level rule off">
+
+<img src="img/04-terraform-foundations/toggle-off-state-at-the-project-level.png" alt="Project Rules page after the change: protect-main with its toggle in the off state">
+<!-- shots:end -->
+
 In this lab you create files in a new folder, `~/platform`.
 When a step shows a file with its path, create that file in VS Code and paste the content.
 If you do not use VS Code, the Text Editor app works too.
