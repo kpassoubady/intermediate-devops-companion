@@ -362,6 +362,9 @@ If the plan wanted to create every resource, Terraform did not find the state. S
 The backend configuration and the bootstrap file are part of the platform code.
 Commit them on a branch, and merge them through a pull request, as you did for `flight-status` in Lab 03.
 
+> [!IMPORTANT]
+> Name the files in `git add`, as the commands below do. `git add .` stages everything in the folder, including files that you did not mean to commit. Run `git status --short` before you commit, and check that only `backend.tf` and the `bootstrap/` files are listed.
+
 ```bash
 cd ~/platform
 git switch -c store-tf-state
@@ -383,6 +386,9 @@ To http://localhost:3000/git/flightops/platform.git
  * [new branch]      store-tf-state -> store-tf-state
 branch 'store-tf-state' set up to track 'origin/store-tf-state'.
 ```
+
+> [!NOTE]
+> The `-u` option makes `origin/store-tf-state` the upstream of your local branch, so a later `git push` or `git pull` on this branch needs no arguments. The `remote:` lines in the output show the link for opening a pull request.
 
 Harness shows a banner for the branch you just pushed. Select **Compare & pull request** (1).
 If the banner is not there, open **Repositories** > **platform** > **Pull Requests** > **New Pull Request**, and choose `store-tf-state` as the source branch and `main` as the target.
@@ -630,6 +636,9 @@ branch 'add-infra-pipeline' set up to track 'origin/add-infra-pipeline'.
 Open a pull request from `add-infra-pipeline` to `main`, and squash merge it.
 Follow the same steps as step 2.5, and refer to the screenshots in that step if you need them.
 The pipeline does not exist in Harness yet, so this pull request does not start a run.
+> [!WARNING]
+> `git branch -D` deletes the branch even though Git does not see it as merged. Run it only after the pull request shows **Merged**.
+
 Update your local copy and delete the branch:
 
 ```bash
@@ -791,6 +800,9 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 
 ### 5.2 Push the branch and open a pull request
 
+> [!CAUTION]
+> `git commit -am` commits every modified file that Git already tracks, not only `variables.tf`. Run `git status --short` first. If it lists a file other than `variables.tf`, undo that change or stage the files by name.
+
 ```bash
 git commit -am "Allow 12 pods in dev"
 git push -u origin raise-dev-pods
@@ -857,6 +869,9 @@ A one-line change to a variable can destroy and recreate a database, and only th
 Look for `-` (destroy) and `-/+` (replace) on objects that hold data.
 
 ### 5.4 Merge
+
+> [!IMPORTANT]
+> The merge starts the `apply` step, which changes the real cluster. Squash and merge only after you have read the plan in step 5.3 and it shows the change you expect.
 
 Merge the pull request as in step 2.5:
 

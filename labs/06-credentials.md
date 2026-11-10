@@ -97,6 +97,9 @@ For each place, note who can read it and what a better practice would be.
 In Lab 01 you set `credential.helper store`.
 Git saved your Harness token the first time you pushed.
 
+> [!CAUTION]
+> The next command prints your Harness token. Do not paste the output into a chat or a ticket, and do not capture it in a screenshot.
+
 ```bash
 ls -l ~/.git-credentials
 cat ~/.git-credentials
@@ -344,6 +347,9 @@ The API key gives access to a real system, so it comes from a Harness secret.
 
 ### 2.3 Run it through a pull request
 
+> [!CAUTION]
+> The `callapi` step prints the API key in the log on purpose. Do not merge this pull request. You close it in step 2.6.
+
 ```bash
 git add .harness/ci.yaml
 git commit -m "Call the partner API"
@@ -466,6 +472,9 @@ git commit -am "Do not print the API key"
 git push
 ```
 
+> [!NOTE]
+> `git push` needs no arguments here because the `-u` option in step 2.3 linked the local branch to `origin/feature/secret-demo`. The first commit stays in the branch history, and the first run's log still shows the key.
+
 <!-- test
 h_wait flightops/flight-status ci success
 if h_log flightops/flight-status ci callapi | grep -q 'fs-demo-7Q2x9LmP4kV8'; then echo "the key is still in the log"; exit 1; fi
@@ -497,6 +506,9 @@ On the pull request page, select **Close pull request**.
 <!-- ui: close_pr flightops/flight-status -->
 
 Delete the branch on your machine and in Harness:
+
+> [!WARNING]
+> `git branch -D` and `git push origin --delete` remove a branch without asking. Run them only for the branch that you created in this lab, and only after the pull request shows **Closed**.
 
 ```bash
 git switch main
@@ -684,6 +696,9 @@ The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25
 h_wait_pr_check flightops/platform infra success
 h_log flightops/platform infra plan | grep -q '8 to add'
 -->
+
+> [!IMPORTANT]
+> Merging starts the `apply` step on `main`, which creates the objects in the cluster. Read the plan before you select **Squash and merge**.
 
 Read the plan in the `infra` check.
 Check that it only adds objects, and that each Role has the rules from the table.
@@ -887,6 +902,9 @@ printf 'aws_secret_access_key = %s%s\n' 'wJalrXUtnFEMI/K7MDENG' '/bPxRfiCYEXAMPL
 cat config.ini
 ```
 
+> [!WARNING]
+> Use only the example keys from this lab. Never put a real credential in a file inside a repository, even on a branch that you plan to delete. A commit keeps the value in the Git history.
+
 ```bash
 git add config.ini
 git commit -m "Add AWS configuration"
@@ -916,6 +934,9 @@ Harness rejected the push. The key is not in the repository on the server.
 ### 4.3 Clean up
 
 The commit exists only on your machine. Delete the branch:
+
+> [!WARNING]
+> `git branch -D` discards the commit that contains the key. This is safe here because the push was rejected, so nobody else has the commit. Use `-D` only for commits that nobody else has.
 
 ```bash
 git switch main
@@ -998,6 +1019,9 @@ git diff
    }
 ```
 
+> [!CAUTION]
+> `git commit -am` commits every modified tracked file. Check that the `git diff` above showed only the one-line version change. Anything else in the pull request changes more than the dev token.
+
 ```bash
 git commit -am "Rotate the dev deployer token"
 git push -u origin rotate-dev-token
@@ -1031,6 +1055,9 @@ A new name cannot be changed in place, so Terraform deletes `deployer-token-v1` 
 <!-- test
 h_wait flightops/platform infra success --branch main
 -->
+
+> [!IMPORTANT]
+> The merge deletes `deployer-token-v1`. Any kubeconfig that still holds the old token stops working, which is what step 5.4 shows.
 
 ```bash
 git switch main && git pull
