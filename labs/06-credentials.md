@@ -819,7 +819,7 @@ Read the plan in the `infra` check.
 In the **platform** repository (2), select **Pull Requests** (1) and open the pull request.
 Open the **Checks** tab (5), select the **terraform** stage (3) under **infra**, and expand the **plan** step (4).
 
-<img src="img/06-credentials/service-acount-plan-build-log-view.png" alt="Pull request #5 Checks tab: (1) Pull Requests, (2) platform breadcrumb, (3) terraform stage, (4) plan step, (5) Checks tab">
+<img src="img/06-credentials/service-account-plan-build-log-view.png" alt="Pull request #5 Checks tab: (1) Pull Requests, (2) platform breadcrumb, (3) terraform stage, (4) plan step, (5) Checks tab">
 
 Check that it only adds objects, and that each Role has the rules from the table.
 Then select **Squash and merge**, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
