@@ -216,20 +216,13 @@ The API needs a key, and the key must not be in the repository.
 
 ### 2.1 Create a Harness secret
 
-In the Harness UI, open the `flightops` project and select **Secrets** > **New Secret**.
-Enter the name `demo_api_key` and the value `fs-demo-7Q2x9LmP4kV8`.
-Select **Create Secret**.
-
+In the Harness UI, open the `flightops` project and select **Secrets** (1), then **New Secret** (2).
+Enter the name `demo_api_key` (3) and the value `fs-demo-7Q2x9LmP4kV8` (4).
+Enter the description `Demo API Key` (5).
+Select **Create Secret** (6).
 
 <!-- shots:begin -->
-<img src="img/06-credentials/01-create_secret-1.png" alt="Create the secret, step 1 of 4">
-
-<img src="img/06-credentials/01-create_secret-2.png" alt="Create the secret, step 2 of 4">
-
-<img src="img/06-credentials/01-create_secret-3.png" alt="Create the secret, step 3 of 4">
-
-<img src="img/06-credentials/01-create_secret-4.png" alt="Create the secret, step 4 of 4">
-
+<img src="img/06-credentials/fill-secret-demo-api-key.png" alt="Create a secret dialog: (1) Secrets, (2) New Secret, (3) Name demo_api_key, (4) Value, (5) Description, (6) Create Secret">
 <!-- shots:end -->
 
 <!-- ui: create_secret flightops demo_api_key fs-demo-7Q2x9LmP4kV8 -->
@@ -316,14 +309,7 @@ git push -u origin feature/secret-demo
 ```
 
 Open a pull request from `feature/secret-demo` to `main` with the title `Call the partner API`, as in Lab 03.
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/02-open_pr-1.png" alt="Open the pull request, step 1 of 2">
-
-<img src="img/06-credentials/02-open_pr-2.png" alt="Open the pull request, step 2 of 2">
-
-<!-- shots:end -->
+If you need a reminder of the screens, see [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: open_pr flightops/flight-status feature/secret-demo main "Call the partner API" -->
 
@@ -334,12 +320,14 @@ h_log flightops/flight-status ci callapi | grep -q 'fs-demo-7Q2x9LmP4kV8'
 
 ### 2.4 Read the log
 
-When the run finishes, open it and select the `callapi` step.
-
+When the run finishes, open the **Checks** tab (1) on the pull request and select the `callapi` step (2).
 
 <!-- shots:begin -->
-<img src="img/06-credentials/03-view_execution-1.png" alt="Open the pipeline run">
+<img src="img/06-credentials/call-api-closed.png" alt="Pull request Checks tab for ci / build: (1) Checks tab, (2) callapi step">
 
+The step expands and shows its output (1).
+
+<img src="img/06-credentials/call-api-expanded.png" alt="callapi step expanded: (1) step output with the echo command and the key in plain text">
 <!-- shots:end -->
 
 <!-- ui: view_execution flightops/flight-status ci -->
@@ -646,14 +634,7 @@ git push -u origin deployers
 ```
 
 Open a pull request in the `platform` repository from `deployers` to `main`, titled `Add deployer service accounts`.
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/05-open_pr-1.png" alt="Open the pull request, step 1 of 2">
-
-<img src="img/06-credentials/05-open_pr-2.png" alt="Open the pull request, step 2 of 2">
-
-<!-- shots:end -->
+The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: open_pr flightops/platform deployers main "Add deployer service accounts" -->
 
@@ -664,17 +645,7 @@ h_log flightops/platform infra plan | grep -q '8 to add'
 
 Read the plan in the `infra` check.
 Check that it only adds objects, and that each Role has the rules from the table.
-Then select **Squash and merge**.
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/06-merge_pr-1.png" alt="Merge the pull request, step 1 of 3">
-
-<img src="img/06-credentials/06-merge_pr-2.png" alt="Merge the pull request, step 2 of 3">
-
-<img src="img/06-credentials/06-merge_pr-3.png" alt="Merge the pull request, step 3 of 3">
-
-<!-- shots:end -->
+Then select **Squash and merge**, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: merge_pr flightops/platform -->
 
@@ -825,31 +796,9 @@ code ~/deployer-dev.kubeconfig ~/deployer-prod.kubeconfig
 - Name `dev_kubeconfig`, value: the content of `~/deployer-dev.kubeconfig`.
 - Name `prod_kubeconfig`, value: the content of `~/deployer-prod.kubeconfig`.
 
-
-<!-- shots:begin -->
-<img src="img/06-credentials/07-create_secret-1.png" alt="Create the secret, step 1 of 4">
-
-<img src="img/06-credentials/07-create_secret-2.png" alt="Create the secret, step 2 of 4">
-
-<img src="img/06-credentials/07-create_secret-3.png" alt="Create the secret, step 3 of 4">
-
-<img src="img/06-credentials/07-create_secret-4.png" alt="Create the secret, step 4 of 4">
-
-<!-- shots:end -->
+The dialog is the same as in [section 2.1](#21-create-a-harness-secret).
 
 <!-- ui: create_secret flightops dev_kubeconfig @~/deployer-dev.kubeconfig -->
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/08-create_secret-1.png" alt="Create the secret, step 1 of 4">
-
-<img src="img/06-credentials/08-create_secret-2.png" alt="Create the secret, step 2 of 4">
-
-<img src="img/06-credentials/08-create_secret-3.png" alt="Create the secret, step 3 of 4">
-
-<img src="img/06-credentials/08-create_secret-4.png" alt="Create the secret, step 4 of 4">
-
-<!-- shots:end -->
 
 <!-- ui: create_secret flightops prod_kubeconfig @~/deployer-prod.kubeconfig -->
 
@@ -1013,14 +962,7 @@ git push -u origin rotate-dev-token
 ```
 
 Open a pull request from `rotate-dev-token` to `main` with the title `Rotate the dev deployer token`.
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/10-open_pr-1.png" alt="Open the pull request, step 1 of 2">
-
-<img src="img/06-credentials/10-open_pr-2.png" alt="Open the pull request, step 2 of 2">
-
-<!-- shots:end -->
+The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: open_pr flightops/platform rotate-dev-token main "Rotate the dev deployer token" -->
 
@@ -1040,17 +982,7 @@ Read the plan in the pull request's `infra` run:
 Plan: 1 to add, 0 to change, 1 to destroy.
 ```
 
-A new name cannot be changed in place, so Terraform deletes `deployer-token-v1` and creates `deployer-token-v2`. Only the dev token changes. Merge the pull request.
-
-
-<!-- shots:begin -->
-<img src="img/06-credentials/11-merge_pr-1.png" alt="Merge the pull request, step 1 of 3">
-
-<img src="img/06-credentials/11-merge_pr-2.png" alt="Merge the pull request, step 2 of 3">
-
-<img src="img/06-credentials/11-merge_pr-3.png" alt="Merge the pull request, step 3 of 3">
-
-<!-- shots:end -->
+A new name cannot be changed in place, so Terraform deletes `deployer-token-v1` and creates `deployer-token-v2`. Only the dev token changes. Merge the pull request, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
 <!-- ui: merge_pr flightops/platform -->
 
