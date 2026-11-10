@@ -415,6 +415,13 @@ git pull
 git branch -D store-tf-state
 ```
 
+> [!NOTE]
+> Deleting a branch after its pull request is merged is normal practice, and it is safe.
+> A branch is only a movable label on a commit. Your changes are already in `main` through the squash merge, so deleting the label removes nothing.
+> Git asks for `-D` here because a squash merge creates a new commit, so Git cannot see that `store-tf-state` was merged.
+> To clean up the remote copy as well, select **Delete Branch** on the merged pull request page.
+> Merging without deleting leaves stale branches that make it harder to see which work is still open.
+
 
 ## Part 3: A credential for the pipeline
 
@@ -507,18 +514,20 @@ Open the file in VS Code, select all (Ctrl+A) and copy (Ctrl+C):
 code ~/platform.kubeconfig
 ```
 
-In the Harness UI, open the `flightops` project and select **Secrets**, then **New Secret**.
-Enter the name `platform_kubeconfig`, paste the file content as the value, and select **Create Secret**.
-
-
 <!-- shots:begin -->
-<img src="img/05-terraform-pipeline/01-create_secret-1.png" alt="Create the secret, step 1 of 4">
+<img src="img/05-terraform-pipeline/01-create_secret-1.png" alt="platform.kubeconfig open in VS Code with all lines selected and the right-click menu open on Copy">
 
-<img src="img/05-terraform-pipeline/01-create_secret-2.png" alt="Create the secret, step 2 of 4">
+In the Harness UI, open the `flightops` project and select **Secrets** (1), then **New Secret** (2). The URL ends in `/secrets/flightops` (3), which confirms the project.
 
-<img src="img/05-terraform-pipeline/01-create_secret-3.png" alt="Create the secret, step 3 of 4">
+<img src="img/05-terraform-pipeline/01-create_secret-2.png" alt="Secrets page for the flightops project: (1) Secrets in the left menu, (2) New Secret button, (3) URL ending in /secrets/flightops">
 
-<img src="img/05-terraform-pipeline/01-create_secret-4.png" alt="Create the secret, step 4 of 4">
+In the **Create a secret** dialog, enter `platform_kubeconfig` in **Name** (1) and paste the file content into **Value** (2). **Show Value** (3) is checked, so the pasted text stays visible. **Description** (4) is optional. Select **Create Secret** (5).
+
+<img src="img/05-terraform-pipeline/01-create_secret-3.png" alt="Create a secret dialog: (1) Name, (2) Value, (3) Show Value, (4) Description, (5) Create Secret">
+
+Harness shows **Secret created successfully** and lists `platform_kubeconfig` on the Secrets page.
+
+<img src="img/05-terraform-pipeline/01-create_secret-4.png" alt="Secrets page after saving: Secret created successfully message and platform_kubeconfig in the list">
 
 <!-- shots:end -->
 
@@ -604,7 +613,22 @@ git commit -m "Add the infra pipeline"
 git push -u origin add-infra-pipeline
 ```
 
+The output at the end will contain as follows:
+
+```text
+...
+...
+remote: 
+remote: Create a pull request for "add-infra-pipeline" by visiting:
+remote:   http://localhost:3000/flightops/platform/pulls/compare/main...add-infra-pipeline
+remote: 
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      add-infra-pipeline -> add-infra-pipeline
+branch 'add-infra-pipeline' set up to track 'origin/add-infra-pipeline'.
+```
+
 Open a pull request from `add-infra-pipeline` to `main`, and squash merge it.
+Follow the same steps as step 2.5, and refer to the screenshots in that step if you need them.
 The pipeline does not exist in Harness yet, so this pull request does not start a run.
 Update your local copy and delete the branch:
 
@@ -614,22 +638,33 @@ git pull
 git branch -D add-infra-pipeline
 ```
 
+The output will contain:
+
+```text
+Switched to branch 'main'
+...
+...
+Fast-forward
+ .harness/infra.yaml | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+ create mode 100644 .harness/infra.yaml
+Deleted branch add-infra-pipeline (was 55e58f6).
+```
+
 ### 4.3 Create the pipeline in Harness
 
-In the Harness UI, open **Repositories** > **platform** > **Pipelines**, and select **New Pipeline**.
-Enter the name `infra`, keep the branch `main`, and set the YAML path to `.harness/infra.yaml`.
-Select **Create**.
-
-
 <!-- shots:begin -->
-<img src="img/05-terraform-pipeline/02-create_pipeline-1.png" alt="Create the pipeline, step 1 of 4">
+In the Harness UI, make sure the **flightops** project (1) is selected. Open **Repositories** (2) > **platform** > **Pipelines** (3), and select **New Pipeline** (4). The URL ends in `/flightops/platform/pipelines` (5).
 
-<img src="img/05-terraform-pipeline/02-create_pipeline-2.png" alt="Create the pipeline, step 2 of 4">
+<img src="img/05-terraform-pipeline/create-new-pipeline-platform.png" alt="Pipelines page of the platform repository: (1) flightops project, (2) Repositories, (3) Pipelines, (4) New Pipeline button, (5) URL /flightops/platform/pipelines">
 
-<img src="img/05-terraform-pipeline/02-create_pipeline-3.png" alt="Create the pipeline, step 3 of 4">
+Enter the name `infra`, keep the branch `main`, and set the YAML path to `.harness/infra.yaml`. Select **Create**.
 
-<img src="img/05-terraform-pipeline/02-create_pipeline-4.png" alt="Create the pipeline, step 4 of 4">
+<img src="img/05-terraform-pipeline/fill-infra-create-pipeline.png" alt="Create New Pipeline dialog: Name infra, Branch main, YAML Path .harness/infra.yaml, and the Create button">
 
+Harness opens the `infra` pipeline editor and shows the YAML from the file.
+
+<img src="img/05-terraform-pipeline/after-creating-pipelne.png" alt="Pipeline editor for infra showing the YAML of .harness/infra.yaml and the Run button">
 <!-- shots:end -->
 
 <!-- ui: create_pipeline flightops/platform infra .harness/infra.yaml -->
@@ -639,47 +674,47 @@ Harness adds a default trigger that runs the pipeline for pull request events.
 ### 4.4 Add a push trigger
 
 The apply step needs a push to `main`, so the pipeline needs a push trigger as well.
-Open the `infra` pipeline, select **Settings** > **Triggers** > **New Trigger**.
-Enter the name `push`, select the event **Branch updated**, and select **Create**.
-
 
 <!-- shots:begin -->
-<img src="img/05-terraform-pipeline/03-add_trigger-1.png" alt="Add the trigger, step 1 of 6">
+In the **Pipelines** list, select the `infra` pipeline.
 
-<img src="img/05-terraform-pipeline/03-add_trigger-2.png" alt="Add the trigger, step 2 of 6">
+<img src="img/05-terraform-pipeline/pipeline-click-infra-pipeline.png" alt="Pipelines list of the platform repository with an arrow pointing to the infra pipeline">
 
-<img src="img/05-terraform-pipeline/03-add_trigger-3.png" alt="Add the trigger, step 3 of 6">
+On the **Executions** page, the sidebar shows **Pipelines** (1) and the breadcrumb shows `infra` (2). Select **Pipeline Settings** (3).
 
-<img src="img/05-terraform-pipeline/03-add_trigger-4.png" alt="Add the trigger, step 4 of 6">
+<img src="img/05-terraform-pipeline/click-pipeline-settings-for-infra.png" alt="Executions page of the infra pipeline: (1) Pipelines in the sidebar, (2) infra in the breadcrumb, (3) Pipeline Settings button">
 
-<img src="img/05-terraform-pipeline/03-add_trigger-5.png" alt="Add the trigger, step 5 of 6">
+Open the **Triggers** tab and select **New Trigger**. The list holds only the `default` trigger.
 
-<img src="img/05-terraform-pipeline/03-add_trigger-6.png" alt="Add the trigger, step 6 of 6">
+<img src="img/05-terraform-pipeline/infr-new-trigger.png" alt="infra settings, Triggers tab: New Trigger button above the default trigger">
 
+Enter the name `push`, check **Branch Updated**, and select **Create**.
+
+<img src="img/05-terraform-pipeline/fill-create-a-trigger.png" alt="Create a Trigger dialog: Name push, Branch Updated checked, and the Create button">
+
+Harness shows **Trigger created successfully**, and `push` appears next to `default`.
+
+<img src="img/05-terraform-pipeline/push-trigger-created-successfully.png" alt="Triggers tab with the Trigger created successfully message and the new push trigger below default">
 <!-- shots:end -->
 
 <!-- ui: add_trigger flightops/platform infra push branch_updated -->
 
 ### 4.5 Run it by hand
 
-Select **Run**, keep the branch `main`, and start the run.
-Open the run and select each step to read its log.
+On the **Executions** page of `infra`, check that **Pipelines** (1) is selected in the sidebar and `infra` (2) is in the breadcrumb. Select **Run** (3).
 
+<img src="img/05-terraform-pipeline/click-run-infra-pipeline.png" alt="Executions page of the infra pipeline: (1) Pipelines in the sidebar, (2) infra in the breadcrumb, (3) Run button">
 
-<!-- shots:begin -->
-<img src="img/05-terraform-pipeline/04-run_pipeline-1.png" alt="Run the pipeline, step 1 of 2">
+In the **Run pipeline** dialog, keep the branch `main` and select **Run pipeline** (1).
 
-<img src="img/05-terraform-pipeline/04-run_pipeline-2.png" alt="Run the pipeline, step 2 of 2">
-
-<!-- shots:end -->
+<img src="img/05-terraform-pipeline/run-pipeline-dialog.png" alt="Run pipeline dialog: Branch main and (1) the Run pipeline button">
 
 <!-- ui: run_pipeline flightops/platform infra main -->
 
+Open the run and select the **terraform** step to read its log.
+The arrow points to the last lines, which report that no changes are needed.
 
-<!-- shots:begin -->
-<img src="img/05-terraform-pipeline/05-view_execution-1.png" alt="Open the pipeline run">
-
-<!-- shots:end -->
+<img src="img/05-terraform-pipeline/run-terraform-log-view.png" alt="Run 1 of the infra pipeline: the terraform step log ends with No changes, marked by an arrow">
 
 <!-- ui: view_execution flightops/platform infra -->
 
@@ -729,7 +764,28 @@ terraform validate
 terraform plan
 ```
 
+The output at the end will look like the below one:
+
 ```text
+...
+....
+Terraform will perform the following actions:
+
+  # kubernetes_resource_quota_v1.env["dev"] will be updated in-place
+  ~ resource "kubernetes_resource_quota_v1" "env" {
+        id = "flightops-dev/quota"
+
+      ~ spec {
+          ~ hard   = {
+              ~ "pods"          = "10" -> "12"
+                # (2 unchanged elements hidden)
+            }
+            # (1 unchanged attribute hidden)
+        }
+
+        # (1 unchanged block hidden)
+    }
+
 Plan: 0 to add, 1 to change, 0 to destroy.
 ```
 
@@ -740,17 +796,28 @@ git commit -am "Allow 12 pods in dev"
 git push -u origin raise-dev-pods
 ```
 
-In the Harness UI, open **Repositories** > **platform** > **Pull Requests** > **New Pull Request**.
-Choose `raise-dev-pods` as the source branch and `main` as the target.
-Enter the title `Allow 12 pods in dev` and select **Create Pull Request**.
+You will see the output at the end like this:
 
+```text
+...
+...
+remote: Create a pull request for "raise-dev-pods" by visiting:
+remote:   http://localhost:3000/flightops/platform/pulls/compare/main...raise-dev-pods
+remote: 
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      raise-dev-pods -> raise-dev-pods
+branch 'raise-dev-pods' set up to track 'origin/raise-dev-pods'.
+```
 
-<!-- shots:begin -->
-<img src="img/05-terraform-pipeline/06-open_pr-1.png" alt="Open the pull request, step 1 of 2">
+Open a pull request from `raise-dev-pods` to `main`, as in step 2.5:
 
-<img src="img/05-terraform-pipeline/06-open_pr-2.png" alt="Open the pull request, step 2 of 2">
+1. In the Harness UI, open **Repositories** > **platform**. Select **Compare & pull request** in the banner for `raise-dev-pods`.
+   If the banner is not there, open **Pull Requests** > **New Pull Request**, and choose `raise-dev-pods` as the source branch and `main` as the target.
+2. Check that the title is `Allow 12 pods in dev`. Enter it if the field is empty.
+3. Select **Create pull request**.
 
-<!-- shots:end -->
+Do not merge yet. You review the plan in step 5.3 first.
+The screenshots in step 2.5 show each screen if you need them.
 
 <!-- ui: open_pr flightops/platform raise-dev-pods main "Allow 12 pods in dev" -->
 
@@ -763,14 +830,10 @@ h_log flightops/platform infra plan | grep -q '1 to change'
 
 ### 5.3 Review the plan
 
-On the pull request page, open the **Checks** tab and select the `infra` check.
-Read the log of the `plan` step:
+On the pull request page, open the **Checks** tab (1). Select the `infra` check, then the `terraform` stage.
+Read the log of the `plan` step (2). It ends with the plan:
 
-
-<!-- shots:begin -->
-<img src="img/05-terraform-pipeline/07-view_pr-1.png" alt="Open the pull request">
-
-<!-- shots:end -->
+<img src="img/05-terraform-pipeline/pr-plan-check-log.png" alt="Pull request Checks tab: (1) Checks tab with one passed check, (2) plan log of the infra check ending in Plan: 0 to add, 1 to change, 0 to destroy">
 
 <!-- ui: view_pr flightops/platform -->
 
@@ -795,17 +858,13 @@ Look for `-` (destroy) and `-/+` (replace) on objects that hold data.
 
 ### 5.4 Merge
 
-Select **Squash and merge**, then confirm.
+Merge the pull request as in step 2.5:
 
+1. On the pull request page, open the **Conversation** tab and select **Squash and merge**.
+2. In the dialog, select **Confirm Squash and merge**.
+3. Check that the pull request shows **Merged**.
 
-<!-- shots:begin -->
-<img src="img/05-terraform-pipeline/08-merge_pr-1.png" alt="Merge the pull request, step 1 of 3">
-
-<img src="img/05-terraform-pipeline/08-merge_pr-2.png" alt="Merge the pull request, step 2 of 3">
-
-<img src="img/05-terraform-pipeline/08-merge_pr-3.png" alt="Merge the pull request, step 3 of 3">
-
-<!-- shots:end -->
+The screenshots in step 2.5 show each screen if you need them.
 
 <!-- ui: merge_pr flightops/platform -->
 
@@ -817,7 +876,15 @@ h_wait flightops/platform infra success --branch main
 h_log flightops/platform infra apply | grep -q '1 changed'
 -->
 
-Open the new run and read the `apply` log:
+Open the new run in **Pipelines** > **infra**. In the `terraform` stage, expand the **apply** step (1).
+
+<img src="img/05-terraform-pipeline/pipeline-infra-terraform-apply-step-in-log.png" alt="infra pipeline execution 3: the terraform stage with the clone and plan steps, and (1) the apply step">
+
+The log ends with the apply result and the outputs. Scroll to the end to find these lines:
+
+<img src="img/05-terraform-pipeline/expanded-log-pipeline-infra-terraform-apply-step-in-log.png" alt="Expanded apply log: the Plan line, the Modifying and Modifications complete lines for the dev quota, and Apply complete! Resources: 0 added, 1 changed, 0 destroyed">
+
+The important lines are:
 
 ```text
 kubernetes_resource_quota_v1.env["dev"]: Modifying... [id=flightops-dev/quota]
@@ -838,6 +905,7 @@ git log --oneline -3
 
 ```text
 12
+Switched to branch 'main'
 ...
 Deleted branch raise-dev-pods (was 8d2e4c1).
 a71c9e0 Allow 12 pods in dev (#1)
@@ -865,16 +933,19 @@ Someone raises the dev quota to 20 with kubectl, outside the pipeline:
 kubectl -n flightops-dev patch resourcequota quota --type merge -p '{"spec":{"hard":{"pods":"20"}}}'
 ```
 
+The output will be:
+
+```text
+resourcequota/quota patched
+```
+
 ### 6.2 Run the pipeline
 
 In the Harness UI, run the `infra` pipeline on `main` by hand, as in step 4.5.
-
+On the **Executions** page of `infra`, select **Run** (1). In the **Run pipeline** dialog, keep the branch `main` and select **Run pipeline** (2).
 
 <!-- shots:begin -->
-<img src="img/05-terraform-pipeline/09-run_pipeline-1.png" alt="Run the pipeline, step 1 of 2">
-
-<img src="img/05-terraform-pipeline/09-run_pipeline-2.png" alt="Run the pipeline, step 2 of 2">
-
+<img src="img/05-terraform-pipeline/run-infra-pipeline-again.png" alt="Executions page of the infra pipeline: (1) Run button, and the Run pipeline dialog with branch main and (2) the Run pipeline button">
 <!-- shots:end -->
 
 <!-- ui: run_pipeline flightops/platform infra main -->
@@ -887,6 +958,10 @@ h_log flightops/platform infra plan | grep -q '1 to change'
 ### 6.3 Read the plan
 
 The `plan` step finds the difference:
+
+<img src="img/05-terraform-pipeline/plan-finds-difference.png" alt="infra pipeline execution 4: the terraform step log shows the dev quota pods changing from 20 to 12 and the line Plan: 0 to add, 1 to change, 0 to destroy">
+
+The key lines are:
 
 ```text
               ~ "pods"          = "20" -> "12"
@@ -913,9 +988,25 @@ terraform apply -auto-approve
 kubectl -n flightops-dev get resourcequota quota -o jsonpath='{.spec.hard.pods}{"\n"}'
 ```
 
+End of the output will look like the below one:
+
 ```text
+...
+...
 Apply complete! Resources: 0 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+database_secrets = {
+  "dev" = "flight-status-db"
+  "prod" = "flight-status-db"
+}
+namespaces = [
+  "flightops-dev",
+  "flightops-prod",
+]
 12
+
 ```
 
 <!-- test
@@ -934,18 +1025,39 @@ Terraform writes its own ID into the Lease and removes it when the run ends.
 kubectl -n terraform get lease lock-tfstate-default-platform -o yaml
 ```
 
+The output will look like:
+```text
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  creationTimestamp: "2026-11-10T03:01:13Z"
+  labels:
+    app.kubernetes.io/managed-by: terraform
+    tfstate: "true"
+    tfstateSecretSuffix: platform
+    tfstateWorkspace: default
+  name: lock-tfstate-default-platform
+  namespace: terraform
+  resourceVersion: "28105"
+  uid: fc0a8ca9-73cc-4993-8373-05f5bde8c383
+spec: {}
+
+```
+
 While no run is active, the Lease has no holder.
 
 If you want to see the lock work, use two terminals.
-In the first terminal, start an apply without `-auto-approve` and leave it at the `Enter a value:` prompt. Terraform holds the lock while it waits:
+In the first terminal, start an apply that has a change to make, without `-auto-approve`, and leave it at the `Enter a value:` prompt.
+A plain `terraform apply` will not work here, because with no changes it finishes without asking and never holds the lock.
+The `-replace` flag forces a pending change, and Terraform holds the lock while it waits:
 
-```text
-cd ~/platform && terraform apply
+```bash
+cd ~/platform && terraform apply -replace='module.postgres["dev"].random_password.db'
 ```
 
 In the second terminal, try a plan that waits at most 10 seconds for the lock:
 
-```text
+```bash
 cd ~/platform && terraform plan -lock-timeout=10s
 ```
 
@@ -972,6 +1084,10 @@ The pipeline uses `-lock-timeout=60s`, so a run that starts while another run ho
 - **The pipeline fails with `lookup k3d-devops-serverlb ... no such host`**: the step container is not on the `devops` network. Check that the `harness` container was started with `GITNESS_CI_CONTAINER_NETWORKS=devops` (Lab 01) and that the cluster is on that network (`docker network inspect devops`).
 - **The pipeline fails at `terraform fmt -check`**: a file is not in standard format. Run `terraform fmt -recursive` in `~/platform`, commit and push.
 - **The pull request shows no `infra` check**: the pipeline does not exist yet, or its default trigger is disabled. Check **Pipelines** > **infra** > **Settings** > **Triggers**.
+- **The pipeline log shows codes such as `[33m` and `[0m` around the Terraform output**: the Harness log viewer does not render ANSI color codes, so Terraform's colors appear as raw text. The output is still correct. To remove the codes, add `TF_CLI_ARGS: "-no-color"` to the stage `envs` in `.harness/infra.yaml`, or add `-no-color` to the `terraform plan` and `terraform apply` commands. Commit and push the change as in step 4.2. If `terraform fmt` rejects the variable, use the per-command flag on `init`, `validate`, `plan` and `apply` only.
+- **Harness still shows a `Compare & pull request` banner for a branch you already merged**: the banner appears for any recently pushed branch that has no open pull request, and a merged pull request is no longer open. Delete the remote branch and the banner goes away. From `~/platform`, run `git push origin --delete store-tf-state add-infra-pipeline raise-dev-pods`, then `git fetch --prune` to remove the stale `origin/...` references from your local copy. Deleting the remote branch loses nothing, because the squash merge already put the changes in `main`. You can also delete a branch in the UI: open **Branches**, select the `⋮` menu on the branch row, and select **Delete** (arrow), or select **Delete Branch** on the merged pull request.
+
+  <img src="img/05-terraform-pipeline/platform-branches-delete-option.png" alt="Branches page of the platform repository: the menu for raise-dev-pods with Browse, Compare and Delete, and an arrow pointing at Delete">
 
 <!-- runner: stop -->
 
