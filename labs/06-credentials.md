@@ -408,6 +408,8 @@ Pass secrets through `envs`, as above.
 Change the step so that it uses the key without printing it.
 It checks that the key is set, and prints only its length.
 
+Update the file in VS Code: `~/flight-status/.harness/ci.yaml`:
+
 <!-- file: ~/flight-status/.harness/ci.yaml -->
 ```yaml
 # Continuous integration for flight-status (Lab 03).
@@ -467,9 +469,59 @@ spec:
             echo "Calling the partner API. The key has ${#API_KEY} characters."
 ```
 
+In the VS Code Explorer, open **ci.yaml** (1) under **.harness**. Replace the `callapi` step so it starts at the comment line (2).
+
+<img src="img/06-credentials/ci-yaml-vscode-change.png" alt="VS Code editing .harness/ci.yaml: (1) ci.yaml in the Explorer, (2) the fixed callapi step starting at the Lab 06 comment">
+
+```bash
+git status
+git branch
+```
+
+The output will be:
+
+```bash
+On branch feature/secret-demo
+Your branch is up to date with 'origin/feature/secret-demo'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   .harness/ci.yaml
+
+no changes added to commit (use "git add" and/or "git commit -a")
+```
+
+```bash
+git branch
+```
+
+The output will be :
+
+```bash
+* feature/secret-demo
+main
+```
+
+After making the change, commit and push:
+
 ```bash
 git commit -am "Do not print the API key"
 git push
+```
+
+The output will be:
+
+```text
+...
+...
+remote: 
+remote: Branch "feature/secret-demo" has open PRs:
+remote:   (#2) Call the partner API
+remote:     http://localhost:3000/flightops/flight-status/pulls/2
+remote: 
+To http://localhost:3000/git/flightops/flight-status.git
+   0fd0424..d6558b2  feature/secret-demo -> feature/secret-demo
 ```
 
 > [!NOTE]
@@ -481,25 +533,38 @@ if h_log flightops/flight-status ci callapi | grep -q 'fs-demo-7Q2x9LmP4kV8'; th
 h_log flightops/flight-status ci callapi | grep -q 'characters'
 -->
 
-Open the new run and read the `callapi` log:
+In the **flight-status** repository (2), select **Pipelines** (1). Open the newest run of **ci**, **#9 Call the partner API** (3).
+
+<img src="img/06-credentials/goto-flight-status-pipeline-api.png" alt="flight-status Pipelines page: (1) Pipelines, (2) flight-status breadcrumb, (3) ci run #9 Call the partner API">
+
+The run page opens under **Pipelines** (1), at **ci** > **9** (3). Select the **build** stage (2) and expand the **callapi** step. The log (4) shows the length of the key, not the key:
+
+<img src="img/06-credentials/call-the-api-log-view.png" alt="ci execution 9 log view: (1) Pipelines, (2) build stage, (3) ci > 9 breadcrumb, (4) callapi step log">
 
 ```text
 Calling the partner API. The key has 20 characters.
 ```
 
 The push started two runs: one for the push to the branch, and one because the branch belongs to an open pull request.
+
 Both show the same result.
 
 ### 2.6 Close the pull request
 
 This change was a demonstration, so you do not merge it.
-On the pull request page, select **Close pull request**.
-
 
 <!-- shots:begin -->
-<img src="img/06-credentials/04-close_pr-1.png" alt="Close the pull request, step 1 of 2">
+In the **flight-status** repository (2), select **Pull Requests** (1). Open **#2 Call the partner API** (3).
 
-<img src="img/06-credentials/04-close_pr-2.png" alt="Close the pull request, step 2 of 2">
+<img src="img/06-credentials/goto-secrets-demo-pr.png" alt="flight-status Pull Requests list: (1) Pull Requests, (2) flight-status breadcrumb, (3) pull request #2 Call the partner API">
+
+On the pull request page, open the three-dot menu next to **Squash and merge** and select **Close pull request**.
+
+<img src="img/06-credentials/click-close-pr-secrets-demo.png" alt="Pull request #2 page with the three-dot menu open and Close pull request highlighted">
+
+The page now reads **This Pull Request was closed.** (1). To remove the branch in Harness from here, select **Delete Branch** (2). The commands below do the same from your terminal.
+
+<img src="img/06-credentials/close-pr-optionally-delete-branch.png" alt="Closed pull request #2: (1) This Pull Request was closed, (2) Delete Branch">
 
 <!-- shots:end -->
 
@@ -514,6 +579,16 @@ Delete the branch on your machine and in Harness:
 git switch main
 git branch -D feature/secret-demo
 git push origin --delete feature/secret-demo
+```
+
+The output will be:
+
+```bash
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+Deleted branch feature/secret-demo (was d6558b2).
+To http://localhost:3000/git/flightops/flight-status.git
+ - [deleted]         feature/secret-demo
 ```
 
 The first run's log still contains the key.
@@ -561,10 +636,25 @@ git switch main && git pull
 git switch -c deployers
 ```
 
+The output will be:
+```text
+...
+...
+Switched to a new branch 'deployers
+```
+
 Create `~/platform/deployers.tf`.
+
+```bash
+touch ~/platform/deployers.tf
+```
+
 It uses `for_each` over the same environments, so dev and prod each get their own ServiceAccount, Role, RoleBinding and token.
 A dev credential cannot change prod.
+
 The variable `deployer_token_versions` becomes part of the token Secret's name, `deployer-token-v1`. You use it in Part 5 to rotate the token.
+
+In the VS Code ~/platform/deployers.tf copy & paste the below code:
 
 <!-- file: ~/platform/deployers.tf -->
 ```hcl
@@ -665,6 +755,10 @@ resource "kubernetes_secret_v1" "deployer_token" {
 }
 ```
 
+In VS Code, `deployers.tf` shows in the **PLATFORM** Explorer with a `U` mark (untracked). The editor ends with the `kubernetes_secret_v1` token resource.
+
+<img src="img/06-credentials/vs-code-deployers.png" alt="VS Code editing deployers.tf in the PLATFORM folder, ending with the kubernetes_secret_v1 deployer_token resource">
+
 Check it on your machine first:
 
 ```bash
@@ -674,6 +768,9 @@ terraform plan
 ```
 
 ```text
+...
+...
+...
 Plan: 8 to add, 0 to change, 0 to destroy.
 ```
 
@@ -687,8 +784,26 @@ git commit -m "Add deployer service accounts"
 git push -u origin deployers
 ```
 
-Open a pull request in the `platform` repository from `deployers` to `main`, titled `Add deployer service accounts`.
+The output will be:
+
+```bash
+...
+...
+remote: 
+remote: Create a pull request for "deployers" by visiting:
+remote:   http://localhost:3000/flightops/platform/pulls/compare/main...deployers
+remote: 
+To http://localhost:3000/git/flightops/platform.git
+ * [new branch]      deployers -> deployers
+branch 'deployers' set up to track 'origin/deployers'
+```
+
+Open/Create a pull request in the `platform` repository from `deployers` to `main`, titled `Add deployer service accounts`.
 The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+
+Check that **base** is `main` and **compare** is `deployers`, then select **Create pull request**.
+
+<img src="img/06-credentials/create-pr-service-accounts.png" alt="Comparing Changes page in the platform repository: base main, compare deployers, title Add deployer service accounts, Create pull request button">
 
 <!-- ui: open_pr flightops/platform deployers main "Add deployer service accounts" -->
 
@@ -701,6 +816,11 @@ h_log flightops/platform infra plan | grep -q '8 to add'
 > Merging starts the `apply` step on `main`, which creates the objects in the cluster. Read the plan before you select **Squash and merge**.
 
 Read the plan in the `infra` check.
+In the **platform** repository (2), select **Pull Requests** (1) and open the pull request.
+Open the **Checks** tab (5), select the **terraform** stage (3) under **infra**, and expand the **plan** step (4).
+
+<img src="img/06-credentials/service-acount-plan-build-log-view.png" alt="Pull request #5 Checks tab: (1) Pull Requests, (2) platform breadcrumb, (3) terraform stage, (4) plan step, (5) Checks tab">
+
 Check that it only adds objects, and that each Role has the rules from the table.
 Then select **Squash and merge**, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
 
@@ -713,12 +833,25 @@ h_wait flightops/platform infra success --branch main
 h_log flightops/platform infra apply | grep -q '8 added'
 -->
 
-Update your copy:
+Update your local copy:
 
 ```bash
+cd ~/platform
 git switch main
 git pull
 git branch -D deployers
+```
+
+The output will be:
+
+```text
+...
+...
+Fast-forward
+ deployers.tf | 95 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 95 insertions(+)
+ create mode 100644 deployers.tf
+Deleted branch deployers (was 9e0e149).
 ```
 
 ### 3.4 Check the permissions
@@ -755,7 +888,16 @@ A small script avoids typing the same steps three times.
 It finds the environment's token Secret by its label, `app.kubernetes.io/component=deployer-token`, reads the token and the CA certificate from it, and writes `~/deployer-<env>.kubeconfig` with the server address that pipeline steps use.
 `umask 077` makes the new file readable only by you.
 
-Create `~/make-deployer-kubeconfig.sh`:
+Create `~/make-deployer-kubeconfig.sh` in two steps.
+
+Step 1: create the empty file and open it in VS Code.
+
+```bash
+touch ~/make-deployer-kubeconfig.sh
+code ~/make-deployer-kubeconfig.sh
+```
+
+Step 2: in VS Code, paste the code below into `~/make-deployer-kubeconfig.sh` and save it. Do not paste it into the terminal.
 
 <!-- file: ~/make-deployer-kubeconfig.sh -->
 ```sh
@@ -792,6 +934,10 @@ current-context: deployer
 EOF
 echo "Wrote $OUT from the Secret $SECRET"
 ```
+
+When you save, the end of the file in VS Code looks like this. The last line is the `echo` command, followed by an empty line 33.
+
+<img src="img/06-credentials/vs-code-make-deployer-kubeconfig.png" alt="VS Code editing make-deployer-kubeconfig.sh, ending with the contexts block, the EOF line and the echo command">
 
 The context sets the namespace, so kubectl commands in the pipeline work in the right environment without `-n`.
 
@@ -850,10 +996,25 @@ Open each file in VS Code to copy its content:
 code ~/deployer-dev.kubeconfig ~/deployer-prod.kubeconfig
 ```
 
-- Name `dev_kubeconfig`, value: the content of `~/deployer-dev.kubeconfig`.
-- Name `prod_kubeconfig`, value: the content of `~/deployer-prod.kubeconfig`.
-
 The dialog is the same as in [section 2.1](#21-create-a-harness-secret).
+
+For the dev secret, enter the name `dev_kubeconfig` (1).
+Paste the content of `~/deployer-dev.kubeconfig` into **Value** (2).
+Enter the description `deployer dev kube config` (3).
+Select **Create Secret** (4).
+
+<img src="img/06-credentials/dev-kube-config-secrets-create.png" alt="Create a secret dialog for dev: (1) Name dev_kubeconfig, (2) Value from ~/deployer-dev.kubeconfig, (3) Description, (4) Create Secret">
+
+For the prod secret, enter the name `prod_kubeconfig` (1).
+Paste the content of `~/deployer-prod.kubeconfig` into **Value** (2).
+Enter the description `deployer prod kube config` (3).
+Select **Create Secret** (4).
+
+<img src="img/06-credentials/prod-kubeconfig-secrets-create.png" alt="Create a secret dialog for prod: (1) Name prod_kubeconfig, (2) Value from ~/deployer-prod.kubeconfig, (3) Description, (4) Create Secret">
+
+After you create both, the **Secrets** page lists **dev_kubeconfig** (1) and **prod_kubeconfig** (2), next to the earlier **demo_api_key**.
+
+<img src="img/06-credentials/dev-prod-secrets-created-view.png" alt="Harness Secrets page for flightops: (1) dev_kubeconfig, (2) prod_kubeconfig">
 
 <!-- ui: create_secret flightops dev_kubeconfig @~/deployer-dev.kubeconfig -->
 
