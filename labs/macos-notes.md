@@ -1,6 +1,6 @@
 # macOS Notes (fallback path)
 
-The labs are written for the provided Ubuntu lab machine. Use this page only if you have no VM and are working on a Mac with Docker Desktop. Follow the numbered lab guides as written, and apply the changes below where a lab uses Linux-only commands.
+The labs are written for the provided Ubuntu lab machine. Use this page only if you have no VM and are working on a Mac with Docker Desktop. Follow the numbered lab guides as written, and apply the changes below where a lab uses Linux-only commands. On a Windows PC, use [Windows notes](windows-notes.md) instead.
 
 Tested on Apple Silicon (arm64), Docker Desktop 4.55. Run `scripts/mac-setup.sh` first. It installs the tools and checks ports.
 

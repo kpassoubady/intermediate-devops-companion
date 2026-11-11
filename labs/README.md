@@ -4,7 +4,7 @@ Hands-on lab guides for the three-day Intermediate DevOps course. Throughout the
 
 The labs follow a single application across all three days: [**flight-status**](../app/README.md), a Python FastAPI web service that tracks flights and statuses.
 
-No lab VM? See [macOS notes](macos-notes.md) for a Mac fallback.
+No lab VM? See [macOS notes](macos-notes.md) for a Mac fallback, or [Windows notes](windows-notes.md) for a Windows PC using WSL.
 
 ---
 
