@@ -135,6 +135,7 @@ In the Harness platform, Security Testing Orchestration (STO) runs scanners such
             cd k8s/dev
             kustomize edit set image flight-status=k3d-registry.localhost:5000/flight-status:${{ build.commit }}
             kubectl apply -k .
+            kubectl annotate deployment/flight-status kubernetes.io/change-cause="build ${{ build.number }}, commit $(echo ${{ build.commit }} | cut -c1-7)" --overwrite
             kubectl rollout status deployment/flight-status --timeout=120s
 ```
 
@@ -143,6 +144,7 @@ In the Harness platform, Security Testing Orchestration (STO) runs scanners such
 - `touch .deploy-started` leaves a marker file in the shared workspace. The `rollback` step uses it to tell whether this run changed the deployment.
 - `kustomize edit set image` writes the new image into `k8s/dev/kustomization.yaml` inside the pipeline's workspace. Git still says `1.1.0`. The pipeline's change is not committed.
 - `kubectl apply -k .` sends the manifests to the cluster, as you did by hand in Lab 08.
+- `kubectl annotate ... kubernetes.io/change-cause=...` writes a note on the deployment: the build number and the first seven characters of the commit. Kubernetes shows this note in the `CHANGE-CAUSE` column of `kubectl rollout history`. Without the note, the column shows `<none>` for every revision, and you cannot tell which build created which revision. Part 8 uses this column. The annotation changes only the label, not the pods, so it does not start another rollout.
 - `kubectl rollout status` waits until the new pods are ready. If they do not become ready, the progress deadline of 90 seconds from Lab 08 ends the wait, and the step fails. This is the first verification.
 
 In the Harness platform, a Deploy stage does this job. The Service names the manifests and the artifact, the Environment is dev, and the Infrastructure Definition names the cluster connector and the namespace. A delegate inside United's network runs the deployment. The Rolling Deployment step applies the manifests and waits for the rollout.
@@ -286,6 +288,7 @@ spec:
             cd k8s/dev
             kustomize edit set image flight-status=k3d-registry.localhost:5000/flight-status:${{ build.commit }}
             kubectl apply -k .
+            kubectl annotate deployment/flight-status kubernetes.io/change-cause="build ${{ build.number }}, commit $(echo ${{ build.commit }} | cut -c1-7)" --overwrite
             kubectl rollout status deployment/flight-status --timeout=120s
       - name: smoke
         type: run
@@ -476,6 +479,7 @@ spec:
             cd k8s/prod
             kustomize edit set image flight-status=k3d-registry.localhost:5000/flight-status:${{ build.commit }}
             kubectl apply -k .
+            kubectl annotate deployment/flight-status kubernetes.io/change-cause="release $(basename ${{ build.ref }}), commit $(echo ${{ build.commit }} | cut -c1-7)" --overwrite
             kubectl rollout status deployment/flight-status --timeout=120s
       - name: smoke
         type: run
@@ -638,6 +642,15 @@ kubectl -n flightops-dev get deployment flight-status -o jsonpath='{.spec.templa
 You should see:
 
 ```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+...
+Fast-forward
+ .harness/ci.yaml            | 72 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ .harness/promote.yaml       | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ k8s/prod/kustomization.yaml | 25 +++++++++++++++++++++++++
+ 3 files changed, 163 insertions(+), 2 deletions(-)
+...
 {"version":"1.0.14","commit":"9f2c4e1b...","environment":"dev"}
 9f2c4e1b...
 k3d-registry.localhost:5000/flight-status:9f2c4e1b...
@@ -656,57 +669,29 @@ h_eq "$dev_commit" "$(git rev-parse HEAD)" "dev runs the commit at the top of ma
 
 ### 4.1 Create the pipeline and its trigger
 
-In Harness, in the **flight-status** repository, select **Pipelines**, then **New Pipeline**. Enter the name `promote`, keep the branch `main`, and set the YAML path to `.harness/promote.yaml`. Create the pipeline.
+In Harness, open the **flight-status** repository (2) and select **Pipelines** (1) in the left menu. Select **New Pipeline** (3).
 
+<img src="img/09-end-to-end-delivery/new-pipeline-flight-status.png" alt="Pipelines page of flight-status: (1) Pipelines in the left menu, (2) breadcrumb Repositories > flight-status, (3) New Pipeline button">
 
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/05-create_pipeline-1.png" alt="Create the pipeline, step 1 of 4">
+In the **Create New Pipeline** dialog, enter the name `promote` (1), keep the branch `main`, and set the **YAML Path** to `.harness/promote.yaml` (2). Select **Create** (3).
 
-<img src="img/09-end-to-end-delivery/05-create_pipeline-2.png" alt="Create the pipeline, step 2 of 4">
+<img src="img/09-end-to-end-delivery/fill-new-promote-pipeline.png" alt="Create New Pipeline dialog: (1) Name promote, (2) YAML Path .harness/promote.yaml, (3) Create">
 
-<img src="img/09-end-to-end-delivery/05-create_pipeline-3.png" alt="Create the pipeline, step 3 of 4">
+Harness opens the new pipeline (1) in the editor. The page title and the breadcrumb (2) show `promote`, and the YAML from `.harness/promote.yaml` (3) is already in the editor.
 
-<img src="img/09-end-to-end-delivery/05-create_pipeline-4.png" alt="Create the pipeline, step 4 of 4">
-
-<!-- shots:end -->
+<img src="img/09-end-to-end-delivery/created-promote-pipeline.png" alt="promote pipeline editor: (1) Pipelines in the left menu, (2) breadcrumb ending in promote, (3) the promote.yaml content in the editor">
 
 <!-- ui: create_pipeline flightops/flight-status promote .harness/promote.yaml -->
 
-A new pipeline gets a default trigger for pull request events. A pull request must never deploy to production, so disable it. Open the `promote` pipeline's settings, select the **Triggers** tab, and switch off the trigger named `default`.
+A new pipeline gets a default trigger for pull request events. A pull request must never deploy to production, so disable it. With **Pipelines** (1) selected, open the settings of `promote` and select the **Triggers** tab (2). Select the trigger named `default` (3), check **Disable trigger** (4), and select **Save** (5).
 
-
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/06-disable_trigger-1.png" alt="Turn off the default trigger, step 1 of 5">
-
-<img src="img/09-end-to-end-delivery/06-disable_trigger-2.png" alt="Turn off the default trigger, step 2 of 5">
-
-<img src="img/09-end-to-end-delivery/06-disable_trigger-3.png" alt="Turn off the default trigger, step 3 of 5">
-
-<img src="img/09-end-to-end-delivery/06-disable_trigger-4.png" alt="Turn off the default trigger, step 4 of 5">
-
-<img src="img/09-end-to-end-delivery/06-disable_trigger-5.png" alt="Turn off the default trigger, step 5 of 5">
-
-<!-- shots:end -->
+<img src="img/09-end-to-end-delivery/disable-existing-default-trigger.png" alt="promote settings, Triggers tab: (1) Pipelines in the left menu, (2) Triggers tab, (3) the default trigger, (4) Disable trigger checkbox, (5) Save">
 
 <!-- ui: disable_trigger flightops/flight-status promote default -->
 
-Add the trigger that starts a release. In the **Triggers** tab, create a new trigger named `release`, select the event **Tag created**, and save it.
+Add the trigger that starts a release. In the **Triggers** tab, select **New Trigger**. In the **Create a Trigger** dialog, enter the name `release` (1) and check the action **Tag Created** (2). Select **Create** (3).
 
-
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/07-add_trigger-1.png" alt="Add the trigger, step 1 of 6">
-
-<img src="img/09-end-to-end-delivery/07-add_trigger-2.png" alt="Add the trigger, step 2 of 6">
-
-<img src="img/09-end-to-end-delivery/07-add_trigger-3.png" alt="Add the trigger, step 3 of 6">
-
-<img src="img/09-end-to-end-delivery/07-add_trigger-4.png" alt="Add the trigger, step 4 of 6">
-
-<img src="img/09-end-to-end-delivery/07-add_trigger-5.png" alt="Add the trigger, step 5 of 6">
-
-<img src="img/09-end-to-end-delivery/07-add_trigger-6.png" alt="Add the trigger, step 6 of 6">
-
-<!-- shots:end -->
+<img src="img/09-end-to-end-delivery/create-trigger-tag-enabled.png" alt="Create a Trigger dialog: (1) Name release, (2) Tag Created action checked, (3) Create">
 
 <!-- ui: add_trigger flightops/flight-status promote release tag_created -->
 
@@ -728,13 +713,31 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Open **Pipelines**, select `promote`, and follow the execution that the tag started. The `check` step prints `Image found`. The `deploy` step rolls out three pods. The `smoke` step checks the commit.
+You will see:
 
+```text
+Total 0 (delta 0), reused 0 (delta 0), pack-reused 0
+remote: 
+remote: No secrets found in 33ms
+remote: 
+remote: 
+remote: No secrets found in 42ms
+remote: 
+To http://localhost:3000/git/flightops/flight-status.git
+ * [new tag]         v1.0.0 -> v1.0.0
+```
 
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/08-view_execution-1.png" alt="Open the pipeline run">
+Open **Tags** (1) in the `flight-status` repository (2). The tag `v1.0.0` (3) points at the commit you tagged.
 
-<!-- shots:end -->
+<img src="img/09-end-to-end-delivery/view-tag-1-0-0-created.png" alt="Tags page of flight-status: (1) Tags in the left menu, (2) breadcrumb Repositories > flight-status, (3) the v1.0.0 tag">
+
+Open **Pipelines** (1) and find `promote` (2). Its last execution shows the tag `v1.0.0` and the same commit (3), not a branch.
+
+<img src="img/09-end-to-end-delivery/view-pipeline-promote-shows-tag-number.png" alt="Pipelines page of flight-status: (1) Pipelines in the left menu, (2) the promote pipeline row, (3) execution #1 on v1.0.0 with commit c8ac16">
+
+Select the `promote` execution that the tag started. The breadcrumb (2) ends in the execution number, and the `promote` stage (3) lists the steps. The ref `refs/tags/v1.0.0` (4) shows the tag started this run. The `check` step prints `Image found`. The `deploy` step rolls out three pods. The `smoke` step checks the commit.
+
+<img src="img/09-end-to-end-delivery/view-promote-build-execution.png" alt="Execution 1 of promote: (1) Pipelines in the left menu, (2) breadcrumb ending in the execution number, (3) promote stage, (4) ref refs/tags/v1.0.0">
 
 <!-- ui: view_execution flightops/flight-status promote -->
 
@@ -769,11 +772,17 @@ h_eq "$prod_commit" "$(git rev-list -n 1 v1.0.0)" "prod runs the commit of tag v
 test "$(kubectl -n flightops-prod get deployment flight-status -o jsonpath='{.status.readyReplicas}')" = "3"
 -->
 
-Open http://flights.localhost:8080 in the browser. The page shows `environment production`.
-
+Open http://flights.localhost:8080 in the browser. The address bar (1) shows the production URL. The page shows `environment production`.
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/09-browse-1.png" alt="The page in the browser">
+<img src="img/09-end-to-end-delivery/flight-status-prod-env-in-browser.png" alt="Production page: (1) address bar at flights.localhost:8080, version line reads environment production">
+
+<!-- shots:end -->
+
+Open http://flights-dev.localhost:8080 in the browser. The address bar (1) shows the dev URL. The page shows `environment dev`.
+
+<!-- shots:begin -->
+<img src="img/09-end-to-end-delivery/flight-status-in-browser.png" alt="Dev page: (1) address bar at flights-dev.localhost:8080, version line reads environment dev">
 
 <!-- shots:end -->
 
@@ -815,19 +824,21 @@ In Harness, open a pull request from `feature/readiness-rename` to `main` with t
 
 <!-- ui: open_pr flightops/flight-status feature/readiness-rename main "Use /readyz for the readiness probe" -->
 
-The `ci` check passes. The pull request run lints, tests, builds and scans, and none of these steps notices the problem.
+Select **Pull Requests** (1) to find the pull request. Open **Checks** (3) and select **build** (2). The `ci` check passes, including the **scan** step (4). The pull request run lints, tests, builds and scans, and none of these steps notices the problem.
+
+<!-- shots:begin -->
+<img src="img/09-end-to-end-delivery/pr-checks-build-log-view.png" alt="Checks tab of pull request #6: (1) Pull Requests in the left menu, (2) build stage, (3) Checks tab, (4) scan step">
+
+<!-- shots:end -->
 
 <!-- test
 h_wait_pr_check flightops/flight-status ci success
 -->
 
-Merge the pull request with **Squash and merge**.
-
+Merge the pull request with **Squash and merge** (1).
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/11-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
-
-<img src="img/09-end-to-end-delivery/11-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
+<img src="img/09-end-to-end-delivery/squash-merge-readiness.png" alt="Pull request #6 ready to merge: (1) Squash and merge button">
 
 <!-- shots:end -->
 
@@ -839,21 +850,25 @@ h_wait flightops/flight-status ci failure --branch main
 
 ### 6.3 Watch the pipeline protect dev
 
-Open the latest `ci` execution for `main`.
-
+Open **Pipelines** (1), then select the `ci` row (2) to open the latest `ci` execution for `main`.
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/12-view_execution-1.png" alt="Open the pipeline run">
+<img src="img/09-end-to-end-delivery/view-ci-build-pipleline-main-merge.png" alt="Pipelines page: (1) Pipelines in the left menu, (2) the ci row on main, execution 17 running">
 
 <!-- shots:end -->
 
 <!-- ui: view_execution flightops/flight-status ci -->
 
-The run takes about two minutes longer than before. In the steps, look for this sequence:
+The run takes about two minutes longer than before. Select the **build** stage (2) in **Pipelines** (1) and look for this sequence:
 
 - `deploy` waits for the rollout for about 90 seconds and fails with `error: deployment "flight-status" exceeded its progress deadline`. The new pod never became ready, because Kubernetes asked `/readyz`, and the service answered 404.
 - `smoke` is skipped, because a step before it failed.
-- `rollback` runs, finds the `.deploy-started` marker, and ends with `deployment "flight-status" successfully rolled out`.
+- `rollback` (3) runs, finds the `.deploy-started` marker, and ends with `deployment "flight-status" successfully rolled out`.
+
+<!-- shots:begin -->
+<img src="img/09-end-to-end-delivery/see-the-rollback.png" alt="Execution 17 of ci: (1) Pipelines in the left menu, (2) build stage, (3) rollback step ending with successfully rolled out">
+
+<!-- shots:end -->
 
 The pipeline shows as failed. That is the correct result: the change did not reach dev, and the run tells everyone that `main` contains a broken change.
 
@@ -874,7 +889,38 @@ kubectl -n flightops-dev get pods -l app=flight-status
 kubectl -n flightops-dev rollout history deployment/flight-status
 ```
 
-Dev still runs the commit of `v1.0.0`, with two ready pods. The rollout history has one more revision: the failed one, followed by the rollback.
+You will see:
+
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+remote: Enumerating objects: 9, done.
+remote: Counting objects: 100% (9/9), done.
+remote: Compressing objects: 100% (5/5), done.
+remote: Total 5 (delta 3), reused 0 (delta 0), pack-reused 0 (from 0)
+Unpacking objects: 100% (5/5), 476 bytes | 476.00 KiB/s, done.
+From http://localhost:3000/git/flightops/flight-status
+   c8ac16c..bbcb942  main       -> origin/main
+Updating c8ac16c..bbcb942
+Fast-forward
+ k8s/base/deployment.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Deleted branch feature/readiness-rename (was 07e17e5).
+{"version":"1.0.15","commit":"c8ac16c84fd35227300ac37c302482621c362d32","environment":"dev"}
+c8ac16c84fd35227300ac37c302482621c362d32
+NAME                             READY   STATUS    RESTARTS   AGE
+flight-status-58fb5c9447-64v29   1/1     Running   0          3h40m
+flight-status-58fb5c9447-cqrkw   1/1     Running   0          3h40m
+deployment.apps/flight-status 
+REVISION  CHANGE-CAUSE
+1         <none>
+3         build 11, commit 5f2a9c1
+5         build 12, commit 8d41e07
+8         build 14, commit 07e17e5
+9         build 13, commit c8ac16c
+```
+
+Dev still runs the commit of `v1.0.0`, with two ready pods. The rollout history has one more revision: the failed one (build 14), followed by the rollback, which shows the build that dev runs again (build 13). The `CHANGE-CAUSE` column comes from the `kubectl annotate` line in the `deploy` step. Revision 1 shows `<none>` because it came from Lab 08, before the pipeline existed.
 
 Users of dev never received an error. During the failed rollout, `maxUnavailable: 0` kept both old pods serving, and the new pod never received traffic because it never became ready. The rollback then removed the new pod and restored the previous pod template.
 
@@ -903,15 +949,35 @@ git revert --no-edit HEAD
 git push -u origin fix/readiness-path
 ```
 
-Open a pull request from `fix/readiness-path` to `main` with the title `Revert the readiness probe path`.
+You will see:
+```text
+Switched to a new branch 'fix/readiness-path'
+[fix/readiness-path c065764] Revert "Use /readyz for the readiness probe (#6)"
+ Date: Wed Nov 11 18:31:30 2026 +0000
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+Enumerating objects: 9, done.
+Counting objects: 100% (9/9), done.
+Delta compression using up to 4 threads
+Compressing objects: 100% (5/5), done.
+Writing objects: 100% (5/5), 503 bytes | 503.00 KiB/s, done.
+Total 5 (delta 3), reused 0 (delta 0), pack-reused 0
+remote: 
+remote: No secrets found in 37ms
+remote: 
+remote: 
+remote: No secrets found in 40ms
+remote: 
+remote: 
+remote: Create a pull request for "fix/readiness-path" by visiting:
+remote:   http://localhost:3000/flightops/flight-status/pulls/compare/main...fix/readiness-path
+remote: 
+To http://localhost:3000/git/flightops/flight-status.git
+ * [new branch]      fix/readiness-path -> fix/readiness-path
+branch 'fix/readiness-path' set up to track 'origin/fix/readiness-path'
+```
 
+Open a pull request from `fix/readiness-path` to `main` with the title `Revert the readiness probe path`. The screens are the same as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/13-open_pr-1.png" alt="Open the pull request, step 1 of 2">
-
-<img src="img/09-end-to-end-delivery/13-open_pr-2.png" alt="Open the pull request, step 2 of 2">
-
-<!-- shots:end -->
 
 <!-- ui: open_pr flightops/flight-status fix/readiness-path main "Revert the readiness probe path" -->
 
@@ -919,13 +985,8 @@ Open a pull request from `fix/readiness-path` to `main` with the title `Revert t
 h_wait_pr_check flightops/flight-status ci success
 -->
 
-Merge it with **Squash and merge**. The `main` run deploys the fixed version to dev.
+Merge it with **Squash and merge**, as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request). The `main` run deploys the fixed version to dev.
 
-
-<!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/14-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
-
-<img src="img/09-end-to-end-delivery/14-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
 
 <!-- shots:end -->
 
@@ -945,6 +1006,10 @@ grep -n 'path: /ready' k8s/base/deployment.yaml
 curl -s http://flights-dev.localhost:8080/version; echo
 git rev-parse HEAD
 ```
+
+Open http://flights-dev.localhost:8080/version in the browser. The JSON shows `environment` `dev` and a `commit` value. The `commit` value matches the `git rev-parse HEAD` output.
+
+<img src="img/09-end-to-end-delivery/dev-version-in-browser.png" alt="Dev version endpoint at flights-dev.localhost:8080/version in the JSON viewer: version, commit, and environment dev">
 
 The probe path is `/ready` again. Dev runs a new version with the commit at the top of `main`. Production still runs `v1.0.0`. To release the fix to production, you would create and push the tag `v1.0.1`.
 
@@ -974,15 +1039,37 @@ Harness Open Source has no CD objects, so you scripted each step. The Harness pl
 
 ### 8.2 Read the DORA metrics from this lab
 
-The DORA research measures software delivery with four metrics. You can read all four from what you did in this lab:
+The DORA research measures software delivery with four metrics. You can read all four from what you did in this lab, but from two different places: the cluster gives you one, and the Harness runs give you the other three.
+
+**The cluster: deployment frequency.** Every deployment to dev adds a revision to the rollout history. The `CHANGE-CAUSE` column shows the note that the `deploy` step wrote with `kubectl annotate`.
 
 ```bash
 kubectl -n flightops-dev rollout history deployment/flight-status
 ```
 
+You will see one line per revision. The build numbers and commits on your screen will differ:
+
+```text
+deployment.apps/flight-status 
+REVISION  CHANGE-CAUSE
+1         <none>
+3         build 11, commit 5f2a9c1
+5         build 12, commit 8d41e07
+8         build 14, commit 07e17e5
+9         build 13, commit c8ac16c
+```
+
+Read the output like this:
+
+- **Count the lines.** Each line is one deployment. This is your deployment frequency. Compare it with the number of merges to `main` that you did today.
+- **`<none>` on revision 1 is expected.** You created that revision by hand in Lab 08, before the pipeline existed, so nobody wrote a note for it.
+- **Revision numbers skip.** A rollback reuses an older revision and gives it the newest number. In the example, revision 8 is the failed readiness rename (build 14), and revision 9 is the rollback, which shows the build that dev runs again (build 13).
+
+**Harness: the other three metrics.** Open the executions of the `ci` pipeline in Harness and read the times.
+
 | Metric | Where you find it in this lab |
 |---|---|
-| Deployment frequency | The number of merges to `main` that deployed to dev today. Each one added a revision to the rollout history. |
+| Deployment frequency | The number of merges to `main` that deployed to dev today. Each one added a revision to the rollout history, as the command above shows. |
 | Lead time for changes | The time from a merge to the end of its `main` run. Read the duration of the run in Harness. |
 | Change failure rate | Deployments that failed, divided by all deployments. Today that is the readiness rename, one of your pipeline deployments. |
 | Failed deployment recovery time | The time from the failed `deploy` step to the end of the `rollback` step. Read the step durations in the failed execution. |

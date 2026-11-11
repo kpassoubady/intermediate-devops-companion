@@ -186,6 +186,7 @@ spec:
             cd k8s/dev
             kustomize edit set image flight-status=k3d-registry.localhost:5000/flight-status:${{ build.commit }}
             kubectl apply -k .
+            kubectl annotate deployment/flight-status kubernetes.io/change-cause="build ${{ build.number }}, commit $(echo ${{ build.commit }} | cut -c1-7)" --overwrite
             kubectl rollout status deployment/flight-status --timeout=120s
       - name: smoke
         type: run
@@ -286,6 +287,7 @@ spec:
             cd k8s/prod
             kustomize edit set image flight-status=k3d-registry.localhost:5000/flight-status:${{ build.commit }}
             kubectl apply -k .
+            kubectl annotate deployment/flight-status kubernetes.io/change-cause="release $(basename ${{ build.ref }}), commit $(echo ${{ build.commit }} | cut -c1-7)" --overwrite
             kubectl rollout status deployment/flight-status --timeout=120s
       - name: smoke
         type: run
