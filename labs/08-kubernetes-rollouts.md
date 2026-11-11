@@ -979,7 +979,7 @@ A  k8s/dev/kustomization.yaml
 
 ### 9.2 Open and merge the pull request
 
-In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/kubernetes` as the source branch. Create the pull request.
+In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/kubernetes` as the source branch. Enter the title `Add Kubernetes manifests` and create the pull request.
 
 
 <!-- ui: open_pr flightops/flight-status feature/kubernetes main "Add Kubernetes manifests" -->
@@ -1007,6 +1007,7 @@ h_wait flightops/flight-status ci success --branch main
 > `git branch -D` deletes the branch even though Git does not see it as merged. Run it only after the pull request shows **Merged**.
 
 ```bash
+cd ~/flight-status
 git switch main
 git pull
 git branch -D feature/kubernetes
@@ -1014,7 +1015,7 @@ kubectl -n flightops-dev get deployment flight-status
 ```
 
 You will see:
-```
+```text
 ...
 Deleted branch feature/kubernetes (was 49984c0).
 NAME            READY   UP-TO-DATE   AVAILABLE   AGE

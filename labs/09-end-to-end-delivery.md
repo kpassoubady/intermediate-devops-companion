@@ -36,6 +36,7 @@ kubectl -n flightops-prod get deployment postgres
 You should see output like this:
 
 ```text
+...
 deployment.yaml  ingress.yaml  kustomization.yaml  service.yaml
 kustomization.yaml
 {"version":"1.1.0","commit":"3c1f0a9e...","environment":"dev"}
@@ -319,6 +320,11 @@ spec:
             kubectl rollout status deployment/flight-status --timeout=120s
 ```
 
+
+In VSCode, open **ci.yaml** in the **.harness** folder in the Explorer (1). Scroll to the end of the file. The **rollback** step ends with the `kubectl rollout status` command (2).
+
+<img src="img/09-end-to-end-delivery/vscode-ci-yaml.png" alt="VS Code with .harness/ci.yaml open: (1) ci.yaml in the Explorer, (2) the last line of the rollback step">
+
 List the step names to check the indentation. A step indented wrongly does not appear in the list.
 
 ```bash
@@ -358,6 +364,7 @@ Because both environments share one base, dev tests the same manifests that prod
 
 ```bash
 mkdir -p k8s/prod
+touch ~/flight-status/k8s/prod/kustomization.yaml
 ```
 
 Create `~/flight-status/k8s/prod/kustomization.yaml` with this content.
@@ -426,6 +433,10 @@ Promotion means deploying to the next environment a version that has already pas
 Every step except `rollback` also checks `when: build.event == "tag"`. In step 4.1 you configure the pipeline so that only tags start it. The condition is a second safeguard: if someone adds a trigger by mistake, the pipeline still cannot deploy to production from a pull request.
 
 Create `~/flight-status/.harness/promote.yaml` with this content.
+
+```bash
+touch ~/flight-status/.harness/promote.yaml
+```
 
 <!-- file: ~/flight-status/.harness/promote.yaml -->
 ```yaml
@@ -517,17 +528,25 @@ git push -u origin feature/delivery
 M  .harness/ci.yaml
 A  .harness/promote.yaml
 A  k8s/prod/kustomization.yaml
+...
+remote: Create a pull request for "feature/delivery" by visiting:
+remote:   http://localhost:3000/flightops/flight-status/pulls/compare/main...feature/delivery
+remote: 
+To http://localhost:3000/git/flightops/flight-status.git
+ * [new branch]      feature/delivery -> feature/delivery
+branch 'feature/delivery' set up to track 'origin/feature/delivery'
 ```
 
 ### 3.2 Open the pull request
 
-In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/delivery` as the source branch. Enter the title `Add delivery and promotion` and create the pull request.
-
+In Harness, open the **flight-status** repository. After the push, a banner shows **feature/delivery**. Select **Compare & pull request**.
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/01-open_pr-1.png" alt="Open the pull request, step 1 of 2">
+<img src="img/09-end-to-end-delivery/create-pr-feature-delivery.png" alt="flight-status repository page with the Compare & pull request button in the banner for feature/delivery">
 
-<img src="img/09-end-to-end-delivery/01-open_pr-2.png" alt="Open the pull request, step 2 of 2">
+Check that the base is `main` and the compare branch is `feature/delivery`. Enter the title `Add delivery and promotion` (1) and select **Create pull request** (2).
+
+<img src="img/09-end-to-end-delivery/fill-title-create-pr.png" alt="Comparing Changes: (1) Title field with Add delivery and promotion, (2) Create pull request button">
 
 <!-- shots:end -->
 
@@ -541,11 +560,14 @@ h_wait_pr_check flightops/flight-status ci success
 
 ### 3.3 Read the pull request run
 
-Open **Pipelines**, select `ci`, and open the latest execution.
-
+Open **Pipelines** (1) in the left menu. Select the **ci** pipeline (2) to open its latest execution.
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/02-view_execution-1.png" alt="Open the pipeline run">
+<img src="img/09-end-to-end-delivery/goto-pipeline.png" alt="Pipelines page: (1) Pipelines in the left menu, (2) the ci pipeline row">
+
+The execution opens, with **Pipelines** (1) still highlighted. Select the **build** stage (2), then expand the **scan** step (3).
+
+<img src="img/09-end-to-end-delivery/view-pipeline-log.png" alt="Execution 14 of ci: (1) Pipelines in the left menu, (2) build stage, (3) expanded scan step log">
 
 <!-- shots:end -->
 
@@ -566,27 +588,37 @@ h_log flightops/flight-status ci image | grep -q "digest: sha256"
 
 ### 3.4 Merge and watch the first delivery
 
-Merge the pull request with **Squash and merge** and delete the source branch when Harness offers it.
-
+Open **Pull Requests** (1) and select **Add delivery and promotion** (2).
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/03-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
+<img src="img/09-end-to-end-delivery/goto-pr-view.png" alt="Pull Requests list: (1) Pull Requests in the left menu, (2) the Add delivery and promotion pull request">
 
-<img src="img/09-end-to-end-delivery/03-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
+The pull request opens with **Pull Requests** (1) still selected. It shows the source branch **feature/delivery** (3) merging into **main**. Choose **Squash and merge**, then select **Confirm Squash and merge** (2). Delete the source branch when Harness offers it.
+
+<img src="img/09-end-to-end-delivery/feature-delivery-sq-merge.png" alt="Pull request #5 ready to merge: (1) Pull Requests in the left menu, (2) Confirm Squash and merge button, (3) feature/delivery source branch">
 
 <!-- shots:end -->
 
 <!-- ui: merge_pr flightops/flight-status -->
 
-The merge is a push to `main`. The `ci` pipeline runs again, and this time it deploys. Open the new execution and follow it until the end. The `deploy` log shows the rollout, and the `smoke` log ends with `true`.
+The merge is a push to `main`. The `ci` pipeline runs again, and this time it deploys. Open **Pipelines** (1) and select the newest `ci` execution. Its steps run in order. Follow the **image** step (2) and the steps after it until the run ends. The `deploy` log shows the rollout, and the `smoke` log ends with `true`.
 
 
 <!-- shots:begin -->
-<img src="img/09-end-to-end-delivery/04-view_execution-1.png" alt="Open the pipeline run">
+<img src="img/09-end-to-end-delivery/main-pipeline-run-view.png" alt="Execution 15 of ci while running: (1) Pipelines in the left menu, (2) image step in the build stage">
+
 
 <!-- shots:end -->
 
 <!-- ui: view_execution flightops/flight-status ci -->
+
+In **Pipelines** (1), the `smoke` log can also show `curl: (22) The requested URL returned error: 502` (2) before `true`. This is expected. The new pods take a few seconds to answer through the ingress, so the first attempts fail. The step retries every 2 seconds, and `true` means a retry succeeded. Ignore the error line when the log ends with `true`.
+
+<!-- shots:begin -->
+<img src="img/09-end-to-end-delivery/smoke-error-ignore.png" alt="Execution 15 of ci, smoke log: (1) Pipelines in the left menu, (2) the curl 502 line above true">
+
+
+<!-- shots:end -->
 
 <!-- test
 h_wait flightops/flight-status ci success --branch main
