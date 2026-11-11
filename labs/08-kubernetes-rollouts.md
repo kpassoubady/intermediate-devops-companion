@@ -1,5 +1,53 @@
 # Lab 08: Kubernetes deployments, rollouts and rollbacks
 
+- [Lab 08: Kubernetes deployments, rollouts and rollbacks](#lab-08-kubernetes-deployments-rollouts-and-rollbacks)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Write the manifests](#part-1-write-the-manifests)
+    - [1.1 Create a branch and the folders](#11-create-a-branch-and-the-folders)
+    - [1.2 The Deployment](#12-the-deployment)
+    - [1.3 The Service](#13-the-service)
+    - [1.4 The Ingress](#14-the-ingress)
+    - [1.5 The Kustomize base and the dev overlay](#15-the-kustomize-base-and-the-dev-overlay)
+    - [1.6 Render the overlay](#16-render-the-overlay)
+  - [Part 2: Deploy to dev](#part-2-deploy-to-dev)
+    - [2.1 Apply the overlay](#21-apply-the-overlay)
+    - [2.2 Look at what Kubernetes created](#22-look-at-what-kubernetes-created)
+    - [2.3 See which pods receive traffic](#23-see-which-pods-receive-traffic)
+    - [2.4 Call the service](#24-call-the-service)
+  - [Part 3: Self-healing, scaling and the quota](#part-3-self-healing-scaling-and-the-quota)
+    - [3.1 Delete a pod](#31-delete-a-pod)
+    - [3.2 Scale up within the quota](#32-scale-up-within-the-quota)
+    - [3.3 Scale past the quota](#33-scale-past-the-quota)
+    - [3.4 Return to the declared state](#34-return-to-the-declared-state)
+  - [Part 4: Roll out version 1.1.0](#part-4-roll-out-version-110)
+    - [4.1 Build and push version 1.1.0](#41-build-and-push-version-110)
+    - [4.2 Optional: watch the rollout in two more terminals](#42-optional-watch-the-rollout-in-two-more-terminals)
+    - [4.3 Change the tag and apply](#43-change-the-tag-and-apply)
+    - [4.4 Walk through the rolling update](#44-walk-through-the-rolling-update)
+  - [Part 5: Failure 1, an image that does not exist](#part-5-failure-1-an-image-that-does-not-exist)
+    - [5.1 Deploy a tag that was never pushed](#51-deploy-a-tag-that-was-never-pushed)
+    - [5.2 Read the symptoms](#52-read-the-symptoms)
+    - [5.3 Roll back](#53-roll-back)
+  - [Part 6: Failure 2, a wrong database password](#part-6-failure-2-a-wrong-database-password)
+    - [6.1 Deploy a bad configuration](#61-deploy-a-bad-configuration)
+    - [6.2 Read the symptoms](#62-read-the-symptoms)
+    - [6.3 Roll back](#63-roll-back)
+  - [Part 7: Failure 3, the database goes away](#part-7-failure-3-the-database-goes-away)
+    - [7.1 Stop the database](#71-stop-the-database)
+    - [7.2 Read the symptoms](#72-read-the-symptoms)
+    - [7.3 Start the database again](#73-start-the-database-again)
+    - [7.4 What the three failures have in common](#74-what-the-three-failures-have-in-common)
+  - [Part 8: k3d and Amazon EKS](#part-8-k3d-and-amazon-eks)
+  - [Part 9: Commit and merge](#part-9-commit-and-merge)
+    - [9.1 Commit and push the branch](#91-commit-and-push-the-branch)
+    - [9.2 Open and merge the pull request](#92-open-and-merge-the-pull-request)
+    - [9.3 Update your local main branch](#93-update-your-local-main-branch)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+  - [Summary](#summary)
+
+
 In this lab you deploy the flight status image from Lab 07 to the `flightops-dev` namespace that Terraform created in Lab 04. You write the Kubernetes manifests yourself: a Deployment, a Service and an Ingress, plus a Kustomize overlay for the dev environment. You watch Kubernetes replace a pod you delete, run into the namespace quota when you scale up, and roll out a new version without downtime. Then you break the deployment in three different ways, read the symptoms, and recover. This lab puts lecture L11 into practice. Lab 09 automates the same deployment in a pipeline.
 
 **Lecture:** L11 Kubernetes · **You need:** Lab 07.
@@ -58,6 +106,9 @@ cd ~/flight-status
 git switch -c feature/kubernetes
 mkdir -p k8s/base k8s/dev
 ```
+
+> [!NOTE]
+> `git switch -c` creates the branch from the commit you are on, which is `main` after the pull in Before you start. Any uncommitted changes you have come along to the new branch.
 
 ### 1.2 The Deployment
 
@@ -905,6 +956,9 @@ At United, the Harness platform deploys to EKS. A Harness Kubernetes rolling dep
 
 ### 9.1 Commit and push the branch
 
+> [!IMPORTANT]
+> `git add k8s` stages only the manifests. Do not use `git add .` here, because it also commits any other change in your checkout. Never add a Secret manifest or the database password to `k8s`. Git keeps committed content in the history, even after you delete the file.
+
 ```bash
 cd ~/flight-status
 git add k8s
@@ -945,6 +999,12 @@ h_wait flightops/flight-status ci success --branch main
 -->
 
 ### 9.3 Update your local main branch
+
+> [!NOTE]
+> Squash and merge puts one new commit on `main`. Your branch commits are not on `main` themselves, so Git cannot see the branch as merged.
+
+> [!CAUTION]
+> `git branch -D` deletes the branch even though Git does not see it as merged. Run it only after the pull request shows **Merged**.
 
 ```bash
 git switch main
