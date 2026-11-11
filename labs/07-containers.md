@@ -1,5 +1,50 @@
 # Lab 07: Build, scan and describe a container
 
+- [Lab 07: Build, scan and describe a container](#lab-07-build-scan-and-describe-a-container)
+  - [Goals](#goals)
+  - [Before you start](#before-you-start)
+  - [Part 1: Install Trivy](#part-1-install-trivy)
+    - [1.1 Download Trivy 0.75.0 and check its checksum](#11-download-trivy-0750-and-check-its-checksum)
+    - [1.2 Install the package](#12-install-the-package)
+  - [Part 2: Write the Dockerfile](#part-2-write-the-dockerfile)
+    - [2.1 Create a branch](#21-create-a-branch)
+    - [2.2 What a Dockerfile contains](#22-what-a-dockerfile-contains)
+    - [2.3 Create the Dockerfile](#23-create-the-dockerfile)
+    - [2.4 Create the .dockerignore file](#24-create-the-dockerignore-file)
+    - [2.5 Your turn: predict the build cache](#25-your-turn-predict-the-build-cache)
+  - [Part 3: Build, run and inspect the image](#part-3-build-run-and-inspect-the-image)
+    - [3.1 Build the image](#31-build-the-image)
+    - [3.2 Look at the image](#32-look-at-the-image)
+    - [3.3 Run the container](#33-run-the-container)
+    - [3.4 Look inside the running container](#34-look-inside-the-running-container)
+    - [3.5 See the build cache at work](#35-see-the-build-cache-at-work)
+  - [Part 4: Push the image to the registry](#part-4-push-the-image-to-the-registry)
+    - [4.1 Tag the image for the local registry](#41-tag-the-image-for-the-local-registry)
+    - [4.2 Push the image](#42-push-the-image)
+    - [4.3 Tags and digests](#43-tags-and-digests)
+  - [Part 5: Scan the image](#part-5-scan-the-image)
+    - [5.1 Scan for high and critical vulnerabilities](#51-scan-for-high-and-critical-vulnerabilities)
+    - [5.2 Decide what blocks a release](#52-decide-what-blocks-a-release)
+    - [5.3 Create a software bill of materials](#53-create-a-software-bill-of-materials)
+  - [Part 6: Run the service with a database using Compose](#part-6-run-the-service-with-a-database-using-compose)
+    - [6.1 The Compose file](#61-the-compose-file)
+    - [6.2 Start the stack](#62-start-the-stack)
+    - [6.3 Use the service](#63-use-the-service)
+    - [6.4 Restart the app container](#64-restart-the-app-container)
+    - [6.5 Stop and remove the stack](#65-stop-and-remove-the-stack)
+  - [Part 7: Describe the container as an Amazon ECS task](#part-7-describe-the-container-as-an-amazon-ecs-task)
+    - [7.1 From Compose to a task definition](#71-from-compose-to-a-task-definition)
+    - [7.2 Your turn: write the task definition](#72-your-turn-write-the-task-definition)
+    - [7.3 Check the file](#73-check-the-file)
+  - [Part 8: Commit and merge](#part-8-commit-and-merge)
+    - [8.1 Commit and push the branch](#81-commit-and-push-the-branch)
+    - [8.2 Open and merge the pull request](#82-open-and-merge-the-pull-request)
+    - [8.3 Update your local main branch](#83-update-your-local-main-branch)
+  - [Troubleshooting](#troubleshooting)
+  - [Going further (optional)](#going-further-optional)
+  - [Summary](#summary)
+
+
 In this lab you package the flight status service as a container image. You write a Dockerfile, build the image, run it and look at its layers. You push the image to the local registry, scan it for known vulnerabilities, and produce a software bill of materials (SBOM). Then you run the service together with PostgreSQL using Docker Compose. Finally, you describe the same container as an Amazon ECS task definition, the format that AWS Fargate runs. Lab 08 deploys the image you build here to Kubernetes.
 
 **Lecture:** L9 Containers and L10 Compose, ECS task definitions and Fargate · **You need:** Lab 06.
@@ -71,6 +116,9 @@ trivy_0.75.0_Linux-64bit.deb: OK
 ```
 
 `--ignore-missing` skips the lines for the files you did not download. The release also publishes a Sigstore signature for each file, in the `.sigstore.json` files next to it. Lecture L9 explains what a signature adds to a checksum.
+
+> [!IMPORTANT]
+> If the check prints `FAILED`, do not install the file. Delete both downloads and download them again.
 
 
 
@@ -268,7 +316,8 @@ You should see six numbered steps, similar to this:
 
 `ENV`, `ARG`, `EXPOSE`, `USER` and `CMD` do not appear as numbered steps. They change the image settings and add no files.
 
-`GIT_COMMIT` is the last commit on your branch. Your Dockerfile is not committed yet, so the image was built from files that are newer than that commit. In Lab 09 the pipeline builds from a commit, so the recorded commit matches the code in the image.
+> [!NOTE]
+> `GIT_COMMIT` is the last commit on your branch. Your Dockerfile is not committed yet, so the image was built from files that are newer than that commit. In Lab 09 the pipeline builds from a commit, so the recorded commit matches the code in the image.
 
 ### 3.2 Look at the image
 
@@ -317,6 +366,9 @@ You should see:
 {"version":"1.0.0","commit":"3c1f0a9e...","environment":"dev"}
 {"status":"ready","storage":"memory"}
 ```
+
+> [!CAUTION]
+> `-p 8000:8000` publishes the port on every network interface of your machine, so other computers on the same network can reach the service. To keep it on your machine only, use `-p 127.0.0.1:8000:8000`.
 
 Open the same endpoints in a browser. In the address bar (1), enter `http://localhost:8000/version`. The JSON response (2) shows the version, commit, and environment.
 
@@ -373,6 +425,9 @@ flights
 ### 3.5 See the build cache at work
 
 Change a comment in the code, build again, and watch which steps Docker reuses. Then undo the change.
+
+> [!CAUTION]
+> `git checkout --` discards every uncommitted change in `flightstatus/__init__.py`, not only the line that `echo` adds. If you have other edits in that file, do not run this part.
 
 ```bash
 echo "# cache demo" >> flightstatus/__init__.py
@@ -469,6 +524,9 @@ Docker-Content-Digest: sha256:4b8e0c...
 
 `docker pull k3d-registry.localhost:5000/flight-status@sha256:<digest>` always returns this exact image, even if someone moves the `1.0.0` tag. In Lab 09 the pipeline tags each image with the commit it was built from. That tag is unique per build, so it is never moved, and it tells you which source code is inside the image.
 
+> [!TIP]
+> To find the digest of an image you pushed, look at the push output. The line that starts with `1.0.0: digest:` shows it.
+
 ## Part 5: Scan the image
 
 ### 5.1 Scan for high and critical vulnerabilities
@@ -557,6 +615,9 @@ A real service rarely runs alone. The flight status service needs PostgreSQL. Do
 | `volumes` | `db-data` is a named volume. It keeps the database files when the database container is removed. |
 
 The database password is in the file. That is acceptable for a throwaway database on your machine, and it is the same test password the pipeline uses. Part 7 shows how a production task receives the real password instead.
+
+> [!WARNING]
+> Never reuse this password for a real database. Anyone who can read the repository can read this file.
 
 Create `~/flight-status/compose.yaml` file.
 
@@ -678,6 +739,9 @@ curl -s http://localhost:8000/flights/UA900 | jq -e '.destination == "LHR"' > /d
 
 `docker compose down` removes the containers and the network. `-v` also deletes the named volume and the data in it. Without `-v`, the data would still be there the next time you run `docker compose up`.
 
+> [!CAUTION]
+> `docker compose down -v` deletes the `db-data` volume and every flight in it. The data cannot be recovered afterwards.
+
 ```bash
 docker compose down -v
 docker volume ls | grep db-data || echo "The db-data volume is gone."
@@ -741,6 +805,9 @@ Open the file, paste the text below, and replace the five `TODO` values. The res
 | `TODO-env` | The value of `APP_ENV` for production. |
 
 Put text values in double quotes, such as `"512"`. Write the port as a plain number.
+
+> [!IMPORTANT]
+> Replace all five `TODO` values. Until you do, the file is not valid JSON, and the check in section 7.3 fails.
 
 ```json
 {
@@ -905,7 +972,8 @@ To http://localhost:3000/git/flightops/flight-status.git
 branch 'feature/container' set up to track 'origin/feature/container'.
 ```
 
-The SBOM is in your home directory, not in the repository, so it is not part of the commit.
+> [!NOTE]
+> The SBOM is in your home directory, not in the repository, so it is not part of the commit. If `git status --short` also lists `output/`, that is the Trivy report from Part 5. `git add` names the four files, so `output/` is not committed.
 
 ### 8.2 Open and merge the pull request
 
@@ -935,9 +1003,6 @@ On the pull request page, check that the **Checks** tab (1) shows the `ci` check
 <img src="img/07-containers/container-squash-merge.png" alt="Pull request page: (1) Checks tab with one passing check, (2) Squash and merge button">
 
 In the dialog, select **Confirm Squash and merge**.
-
-<img src="img/07-containers/02-merge_pr-2.png" alt="Squash and merge dialog with the Confirm Squash and merge button">
-
 <!-- shots:end -->
 
 <!-- ui: merge_pr flightops/flight-status -->
@@ -957,6 +1022,15 @@ git branch -D feature/container
 ```
 
 A squash merge creates a new commit on `main` with all the changes from the branch. Git does not recognise your local branch as merged, so `git branch -d` would refuse to delete it. `-D` deletes it anyway.
+
+The output will be:
+
+```text
+Switched to branch 'main'
+Your branch is up to date with 'origin/main'.
+Already up to date.
+Deleted branch feature/container (was c9cf7ea).
+```
 
 <!-- test
 git show HEAD:Dockerfile | grep -q "USER 10001"
