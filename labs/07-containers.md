@@ -947,6 +947,7 @@ jq -e '.cpu == "512" and .memory == "1024" and .containerDefinitions[0].secrets[
 
 ```bash
 cd ~/flight-status
+git stash push -u -m "Trivy report from Part 5" -- output/
 git add Dockerfile .dockerignore compose.yaml ecs/taskdef.json
 git status --short
 git commit -m "Add container build files"
@@ -973,7 +974,9 @@ branch 'feature/container' set up to track 'origin/feature/container'.
 ```
 
 > [!NOTE]
-> The SBOM is in your home directory, not in the repository, so it is not part of the commit. If `git status --short` also lists `output/`, that is the Trivy report from Part 5. `git add` names the four files, so `output/` is not committed.
+> The SBOM is in your home directory, not in the repository, so it is not part of the commit.
+>
+> The first command stashes the `output/` folder with the Trivy report from Part 5. `-u` includes untracked files, and `-- output/` limits the stash to that folder, so your staged files stay put. The report is kept in the stash list. To see it again, run `git stash list`, then `git stash pop` to restore it to `output/`. Use `git stash drop` to delete it.
 
 ### 8.2 Open and merge the pull request
 

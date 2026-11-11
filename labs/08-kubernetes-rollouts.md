@@ -83,6 +83,13 @@ Because the requests are lower than the limits, Kubernetes puts these pods in th
 
 Create `~/flight-status/k8s/base/deployment.yaml` with this content.
 
+```bash
+mkdir -p ~/flight-status/k8s/base
+touch ~/flight-status/k8s/base/deployment.yaml
+```
+
+Copy and paste the below content into `~/flight-status/k8s/base/deployment.yaml`
+
 <!-- file: ~/flight-status/k8s/base/deployment.yaml -->
 ```yaml
 apiVersion: apps/v1
@@ -154,6 +161,11 @@ Pods come and go, and each new pod gets a new IP address. A Service gives the po
 
 Create `~/flight-status/k8s/base/service.yaml`.
 
+```bash
+touch ~/flight-status/k8s/base/service.yaml
+```
+
+
 <!-- file: ~/flight-status/k8s/base/service.yaml -->
 ```yaml
 apiVersion: v1
@@ -174,6 +186,10 @@ spec:
 A Service is reachable only inside the cluster. An Ingress routes HTTP requests from outside the cluster to a Service, based on the host name and the path. k3s, the Kubernetes distribution inside k3d, includes the Traefik ingress controller. The k3d load balancer forwards port 8080 of your machine to Traefik. The host name in the base file is a placeholder. Each overlay sets its own host name.
 
 Create `~/flight-status/k8s/base/ingress.yaml`.
+
+```bash
+touch ~/flight-status/k8s/base/ingress.yaml
+```
 
 <!-- file: ~/flight-status/k8s/base/ingress.yaml -->
 ```yaml
@@ -201,6 +217,10 @@ Kustomize combines and changes YAML files without templates. The base lists the 
 
 Create `~/flight-status/k8s/base/kustomization.yaml`.
 
+```bash
+touch ~/flight-status/k8s/base/kustomization.yaml
+```
+
 <!-- file: ~/flight-status/k8s/base/kustomization.yaml -->
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -219,6 +239,12 @@ The dev overlay sets four things:
 - `patches` replaces the Ingress host with `flights-dev.localhost`. The patch uses the JSON Patch format: an operation, a path inside the object, and a value.
 
 Create `~/flight-status/k8s/dev/kustomization.yaml`.
+
+```bash
+mkdir -p ~/flight-status/k8s/dev
+touch ~/flight-status/k8s/dev/kustomization.yaml
+```
+
 
 <!-- file: ~/flight-status/k8s/dev/kustomization.yaml -->
 ```yaml
@@ -258,6 +284,7 @@ kubectl kustomize k8s/dev | grep -E 'namespace:|image:|host:|name: flight-status
 In the filtered output, check these values:
 
 ```text
+...
   name: flight-status-config-7t5g9hc6c4
   namespace: flightops-dev
                 name: flight-status-config-7t5g9hc6c4
@@ -273,6 +300,8 @@ kubectl kustomize k8s/dev | grep -q "host: flights-dev.localhost"
 -->
 
 ## Part 2: Deploy to dev
+
+> **Note:** Pod names, ReplicaSet suffixes, ages and restart counts differ from run to run, so the numbers in this lab will not match your terminal. Check your own output for the exact names and compare the structure: pod counts, ready counts, statuses and messages.
 
 ### 2.1 Apply the overlay
 
@@ -302,6 +331,31 @@ deployment "flight-status" successfully rolled out
 kubectl -n flightops-dev get deployment,replicaset,pods,service,ingress
 ```
 
+You will see:
+
+```text
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/flight-status   2/2     2            2           59s
+deployment.apps/postgres        1/1     1            1           47h
+
+NAME                                       DESIRED   CURRENT   READY   AGE
+replicaset.apps/flight-status-7948fd98d5   2         2         2       59s
+replicaset.apps/postgres-7c86779dd7        1         1         1       47h
+
+NAME                                 READY   STATUS    RESTARTS      AGE
+pod/flight-status-7948fd98d5-6d7hk   1/1     Running   1 (53s ago)   59s
+pod/flight-status-7948fd98d5-rrtct   1/1     Running   0             59s
+pod/postgres-7c86779dd7-244xw        1/1     Running   0             25h
+
+NAME                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/flight-status   ClusterIP   10.43.111.202   <none>        80/TCP     59s
+service/postgres        ClusterIP   10.43.85.1      <none>        5432/TCP   47h
+
+NAME                                      CLASS     HOSTS                   ADDRESS      PORTS   AGE
+ingress.networking.k8s.io/flight-status   traefik   flights-dev.localhost   172.18.0.2   80      59s
+training@ip-172-31-29-52:~/flight-status$ 
+```
+
 The output also lists the PostgreSQL objects from Lab 04. For `flight-status`, follow the chain:
 
 - The Deployment `flight-status` shows `2/2` ready.
@@ -309,6 +363,7 @@ The output also lists the PostgreSQL objects from Lab 04. For `flight-status`, f
 - Two pods `flight-status-<hash>-<id>` are `Running` with `1/1` ready.
 - The Service `flight-status` has a cluster IP and port 80.
 - The Ingress `flight-status` has the host `flights-dev.localhost`.
+
 
 ### 2.3 See which pods receive traffic
 
@@ -351,11 +406,11 @@ h_get http://flights-dev.localhost:8080/version | jq -e '.version == "1.0.0" and
 h_get http://flights-dev.localhost:8080/ready | jq -e '.storage == "postgres"' > /dev/null
 -->
 
-Open http://flights-dev.localhost:8080 in the browser. The page lists the flights and shows `Version 1.0.0 · environment dev`.
+Open http://flights-dev.localhost:8080 in the browser. The address bar (1) shows the URL. The page lists the flights and shows `Version 1.0.0 · environment dev`.
 
 
 <!-- shots:begin -->
-<img src="img/08-kubernetes-rollouts/01-browse-1.png" alt="The page in the browser">
+<img src="img/08-kubernetes-rollouts/01-browse-callout.png" alt="Flight status page in the browser: (1) the address bar with http://flights-dev.localhost:8080, and the flight list below the heading">
 
 <!-- shots:end -->
 
@@ -373,6 +428,20 @@ POD=$(kubectl -n flightops-dev get pods -l app=flight-status -o jsonpath='{.item
 kubectl -n flightops-dev delete pod "$POD"
 kubectl -n flightops-dev get pods -l app=flight-status
 kubectl -n flightops-dev rollout status deployment/flight-status --timeout=120s
+```
+
+You will see:
+
+```text
+NAME                             READY   STATUS    RESTARTS        AGE
+flight-status-7948fd98d5-6d7hk   1/1     Running   1 (7m50s ago)   7m56s
+flight-status-7948fd98d5-rrtct   1/1     Running   0               7m56s
+pod "flight-status-7948fd98d5-6d7hk" deleted from flightops-dev namespace
+NAME                             READY   STATUS    RESTARTS   AGE
+flight-status-7948fd98d5-pm6hz   0/1     Running   0          1s
+flight-status-7948fd98d5-rrtct   1/1     Running   0          7m57s
+Waiting for deployment "flight-status" rollout to finish: 1 of 2 updated replicas are available...
+deployment "flight-status" successfully rolled out
 ```
 
 The second list shows a new pod with a different name and an age of a few seconds. You did not restart anything. The ReplicaSet wanted two pods, saw one, and created one.
@@ -437,6 +506,25 @@ kubectl -n flightops-dev rollout status deployment/flight-status --timeout=120s
 kubectl -n flightops-dev get pods -l app=flight-status
 ```
 
+```text
+deployment.apps/flight-status scaled
+deployment "flight-status" successfully rolled out
+```
+
+```bash
+kubectl -n flightops-dev get pods -l app=flight-status
+```
+
+```text
+NAME                             READY   STATUS        RESTARTS   AGE
+flight-status-7948fd98d5-dk9zl   1/1     Terminating   0          46s
+flight-status-7948fd98d5-klxrn   1/1     Terminating   0          46s
+flight-status-7948fd98d5-pm6hz   1/1     Running       0          3m17s
+flight-status-7948fd98d5-qznlm   1/1     Terminating   0          2m14s
+flight-status-7948fd98d5-rrtct   1/1     Running       0          11m
+flight-status-7948fd98d5-sq5xk   1/1     Terminating   0          2m14s
+```
+
 `kubectl scale` is an imperative change. The file in Git still says `replicas: 2`. If you had left 4 replicas running, the cluster would have drifted from Git, as the namespace quota drifted from Terraform in Lab 04. The next `kubectl apply -k` would set 2 again. In a GitOps setup, a controller in the cluster would undo such a change by itself.
 
 ## Part 4: Roll out version 1.1.0
@@ -452,6 +540,14 @@ docker build -t k3d-registry.localhost:5000/flight-status:1.1.0 \
   --build-arg GIT_COMMIT="$(git rev-parse HEAD)" \
   .
 docker push k3d-registry.localhost:5000/flight-status:1.1.0
+```
+
+```text
+...
+...
+685db3bee242: Layer already exists 
+ff96eb9f5a6c: Pushed 
+1.1.0: digest: sha256:9a8da275810a50d20f25... size: 856
 ```
 
 ### 4.2 Optional: watch the rollout in two more terminals
@@ -477,9 +573,10 @@ Leave both running. Stop them with Ctrl+C after step 4.3.
 You change the version in the overlay file, not with a kubectl command, so Git records which version dev runs. Then you apply the overlay.
 
 ```bash
-sed -i 's/newTag: "1.0.0"/newTag: "1.1.0"/' k8s/dev/kustomization.yaml
-grep newTag k8s/dev/kustomization.yaml
-kubectl apply -k k8s/dev
+cd ~/flight-status
+sed -i 's/newTag: "1.0.0"/newTag: "1.1.0"/' ~/flight-status/k8s/dev/kustomization.yaml
+grep newTag ~/flight-status/k8s/dev/kustomization.yaml
+kubectl apply -k ~/flight-status/k8s/dev
 kubectl -n flightops-dev rollout status deployment/flight-status --timeout=120s
 ```
 
@@ -580,6 +677,9 @@ flight-status-7f9b6c5d4e-m4q7z   1/1     Running            0          5m
 flight-status-6c8d7e9f5a-t2v9w   0/1     ImagePullBackOff   0          45s
 {"version":"1.1.0","commit":"3c1f0a9e...","environment":"dev"}
 ... Failed to pull image "k3d-registry.localhost:5000/flight-status:9.9.9": ... not found
+...
+46s         Warning   Failed   pod/flight-status-58f87c7fc-g9ptw   Error: ErrImagePull
+10s         Warning   Failed   pod/flight-status-58f87c7fc-g9ptw   Error: ImagePullBackOff
 ```
 
 The status may also show `ErrImagePull`. Kubernetes retries the pull with growing pauses, which is what `BackOff` means. The two old pods still run version 1.1.0 and still answer requests. `maxUnavailable: 0` stopped Kubernetes from removing an old pod before a new pod was ready.
@@ -596,6 +696,15 @@ kubectl -n flightops-dev get pods -l app=flight-status
 
 The failed pod is gone, and two pods are running. The cluster matches Git again (`newTag: "1.1.0"`).
 
+You will see:
+
+```text
+NAME                            READY   STATUS        RESTARTS   AGE
+flight-status-58f87c7fc-g9ptw   0/1     Terminating   0          2m39s
+flight-status-df44598cb-8q7lv   1/1     Running       0          3m46s
+flight-status-df44598cb-t465g   1/1     Running       0          3m53s
+```
+
 <!-- test
 h_get http://flights-dev.localhost:8080/version | jq -e '.version == "1.1.0"' > /dev/null
 test "$(kubectl -n flightops-dev get deployment flight-status -o jsonpath='{.status.readyReplicas}')" = "2"
@@ -611,17 +720,38 @@ A wrong setting is another common failure. `kubectl set env` replaces the `DATAB
 kubectl -n flightops-dev set env deployment/flight-status DATABASE_URL=postgresql://flights:wrong@postgres:5432/flights
 ```
 
-The rollout does not finish:
+You will see:
+
+```text
+deployment.apps/flight-status env updated
+```
+
+The rollout does not finish. Kubernetes marks it as failed 90 seconds after the change, so this command waits up to 100 seconds:
 
 <!-- expect-fail -->
 ```bash
-kubectl -n flightops-dev rollout status deployment/flight-status --timeout=40s
+kubectl -n flightops-dev rollout status deployment/flight-status --timeout=100s
+```
+
+You will see:
+
+```text
+error: deployment "flight-status" exceeded its progress deadline
 ```
 
 ### 6.2 Read the symptoms
 
 ```bash
 kubectl -n flightops-dev get pods -l app=flight-status
+```
+
+You will see:
+
+```text
+NAME                             READY   STATUS             RESTARTS      AGE
+flight-status-65898bc756-2kqdz   0/1     CrashLoopBackOff   4 (61s ago)   2m42s
+flight-status-df44598cb-8q7lv    1/1     Running            0             10m
+flight-status-df44598cb-t465g    1/1     Running            0             10m
 ```
 
 The new pod shows `Error` or `CrashLoopBackOff`, and its `RESTARTS` count goes up. The container starts, stops with an error, and the kubelet starts it again after a growing pause. Read the log of the newest pod:
@@ -657,6 +787,14 @@ kubectl -n flightops-dev rollout status deployment/flight-status --timeout=120s
 kubectl -n flightops-dev get deployment flight-status -o jsonpath='{.spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name}'; echo
 ```
 
+You will see:
+
+```text
+deployment.apps/flight-status rolled back
+deployment "flight-status" successfully rolled out
+flight-status-db
+```
+
 The last command prints `flight-status-db`. The rollback restored the reference to the Secret.
 
 ## Part 7: Failure 3, the database goes away
@@ -674,6 +812,9 @@ kubectl -n flightops-dev get pods
 You should see:
 
 ```text
+deployment.apps/postgres scaled
+pod/flight-status-df44598cb-8q7lv condition met
+pod/flight-status-df44598cb-t465g condition met
 NAME                             READY   STATUS    RESTARTS   AGE
 flight-status-7f9b6c5d4e-8hx2k   0/1     Running   0          12m
 flight-status-7f9b6c5d4e-m4q7z   0/1     Running   0          12m
@@ -696,10 +837,10 @@ You should see:
 ... Readiness probe failed: HTTP probe failed with statuscode: 503
 flight-status-7f9b6c5d4e-8hx2k  ready=false
 flight-status-7f9b6c5d4e-m4q7z  ready=false
-404
+503
 ```
 
-`/ready` answers 503 because the service cannot reach its database. Kubernetes marked both pods as not ready and took them out of the Service. The request through the ingress fails because no pod is ready to receive it. Traefik in k3s answers 404 in this case, while other ingress controllers answer 503. The liveness probe on `/health` still passes, so the kubelet does not restart the containers. A restart would not help, because the problem is the database.
+`/ready` answers 503 because the service cannot reach its database. Kubernetes marked both pods as not ready and took them out of the Service. The request through the ingress fails because no pod is ready to receive it, so the ingress answers `503`. Your terminal may show `503` too, as in the output above. A `404` instead means the host name does not match the Ingress. See Troubleshooting. The liveness probe on `/health` still passes, so the kubelet does not restart the containers. A restart would not help, because the problem is the database.
 
 <!-- test
 test "$(kubectl -n flightops-dev get pods -l app=flight-status -o jsonpath='{.items[*].status.containerStatuses[0].ready}' | tr ' ' '\n' | sort -u)" = "false"
@@ -714,6 +855,17 @@ kubectl -n flightops-dev scale deployment/postgres --replicas=1
 kubectl -n flightops-dev rollout status deployment/postgres --timeout=120s
 kubectl -n flightops-dev wait --for=condition=Ready pod -l app=flight-status --timeout=120s
 curl -s http://flights-dev.localhost:8080/ready; echo
+```
+
+Output will be:
+
+```text
+deployment.apps/postgres scaled
+Waiting for deployment "postgres" rollout to finish: 0 of 1 updated replicas are available...
+deployment "postgres" successfully rolled out
+pod/flight-status-df44598cb-8q7lv condition met
+pod/flight-status-df44598cb-t465g condition met
+{"status":"ready","storage":"postgres"}
 ```
 
 You should see `{"status":"ready","storage":"postgres"}`. The app pods became ready again without a restart. The data is still there, because PostgreSQL keeps its files on the persistent volume claim that Terraform created. The Deployment `postgres` has one replica again, as Terraform expects, so the next `terraform plan` shows no drift.
@@ -773,15 +925,8 @@ A  k8s/dev/kustomization.yaml
 
 ### 9.2 Open and merge the pull request
 
-In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/kubernetes` as the source branch. Enter the title `Add Kubernetes manifests` and create the pull request.
+In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/kubernetes` as the source branch. Create the pull request.
 
-
-<!-- shots:begin -->
-<img src="img/08-kubernetes-rollouts/02-open_pr-1.png" alt="Open the pull request, step 1 of 2">
-
-<img src="img/08-kubernetes-rollouts/02-open_pr-2.png" alt="Open the pull request, step 2 of 2">
-
-<!-- shots:end -->
 
 <!-- ui: open_pr flightops/flight-status feature/kubernetes main "Add Kubernetes manifests" -->
 
@@ -792,14 +937,6 @@ h_wait_pr_check flightops/flight-status ci success
 -->
 
 Merge the pull request with **Squash and merge** and delete the source branch when Harness offers it.
-
-
-<!-- shots:begin -->
-<img src="img/08-kubernetes-rollouts/03-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
-
-<img src="img/08-kubernetes-rollouts/03-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
-
-<!-- shots:end -->
 
 <!-- ui: merge_pr flightops/flight-status -->
 
@@ -814,6 +951,14 @@ git switch main
 git pull
 git branch -D feature/kubernetes
 kubectl -n flightops-dev get deployment flight-status
+```
+
+You will see:
+```
+...
+Deleted branch feature/kubernetes (was 49984c0).
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+flight-status   2/2     2            2           76m
 ```
 
 The `main` branch now contains the manifests, and dev runs version 1.1.0 with two ready pods.
@@ -832,7 +977,8 @@ h_get http://flights-dev.localhost:8080/version | jq -e '.version == "1.1.0"' > 
 - **Pods stay in `CreateContainerConfigError`**: the Secret `flight-status-db` or the generated ConfigMap is missing. Check with `kubectl -n flightops-dev get secret,configmap`. Terraform creates the Secret.
 - **`ErrImagePull` for version 1.0.0 or 1.1.0**: the image is not in the registry. Check with `curl -s http://k3d-registry.localhost:5000/v2/flight-status/tags/list` and push it again.
 - **`Error: container has runAsNonRoot and image will run as root`**: the image was built without the `USER 10001` line. Rebuild it from the Lab 07 Dockerfile.
-- **`curl http://flights-dev.localhost:8080` returns `404 page not found`**: no ready pod matches the Ingress, or the host name is wrong. Check `kubectl -n flightops-dev get ingress` and `kubectl -n flightops-dev get pods`.
+- **`curl http://flights-dev.localhost:8080` returns `404 page not found`**: the host name in the request does not match the Ingress, or the Ingress does not exist. Check `kubectl -n flightops-dev get ingress`.
+- **`curl http://flights-dev.localhost:8080` returns `503`**: the Ingress matches, but no pod is ready. Check `kubectl -n flightops-dev get pods` and the events for readiness failures, as in Part 7.
 - **`exceeded quota` events**: the namespace has reached its quota. Scale down, or raise the quota through Terraform in the `platform` repository.
 - **A rollout seems stuck**: run `kubectl -n flightops-dev describe deployment flight-status` and `kubectl -n flightops-dev get events --sort-by=.lastTimestamp`. Use `kubectl -n flightops-dev rollout undo deployment/flight-status` to return to the previous version.
 - **`kubectl wait` times out in Part 7**: the probes need up to 15 seconds to change state. Run the `kubectl get pods` command again after a few seconds.
