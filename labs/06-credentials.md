@@ -357,7 +357,7 @@ git push -u origin feature/secret-demo
 ```
 
 Open a pull request from `feature/secret-demo` to `main` with the title `Call the partner API`, as in Lab 03.
-If you need a reminder of the screens, see [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+If you need a reminder of the screens, see [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
 <!-- ui: open_pr flightops/flight-status feature/secret-demo main "Call the partner API" -->
 
@@ -799,7 +799,7 @@ branch 'deployers' set up to track 'origin/deployers'
 ```
 
 Open/Create a pull request in the `platform` repository from `deployers` to `main`, titled `Add deployer service accounts`.
-The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+The screens are the same as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
 Check that **base** is `main` and **compare** is `deployers`, then select **Create pull request**.
 
@@ -822,7 +822,7 @@ Open the **Checks** tab (5), select the **terraform** stage (3) under **infra**,
 <img src="img/06-credentials/service-account-plan-build-log-view.png" alt="Pull request #5 Checks tab: (1) Pull Requests, (2) platform breadcrumb, (3) terraform stage, (4) plan step, (5) Checks tab">
 
 Check that it only adds objects, and that each Role has the rules from the table.
-Then select **Squash and merge**, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+Then select **Squash and merge**, as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
 <!-- ui: merge_pr flightops/platform -->
 
@@ -1242,7 +1242,7 @@ branch 'rotate-dev-token' set up to track 'origin/rotate-dev-token'.
 
 
 Open a pull request from `rotate-dev-token` to `main` with the title `Rotate the dev deployer token`. The push output printed this link, and you can open it directly: <http://localhost:3000/flightops/platform/pulls/compare/main...rotate-dev-token>
-The screens are the same as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+The screens are the same as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
 <!-- ui: open_pr flightops/platform rotate-dev-token main "Rotate the dev deployer token" -->
 
@@ -1262,7 +1262,7 @@ Read the plan in the pull request's `infra` run:
 Plan: 1 to add, 0 to change, 1 to destroy.
 ```
 
-A new name cannot be changed in place, so Terraform deletes `deployer-token-v1` and creates `deployer-token-v2`. Only the dev token changes. Merge the pull request, as in [Lab 05, section 2.5](05-terraform-pipeline.md#25-commit-the-change).
+A new name cannot be changed in place, so Terraform deletes `deployer-token-v1` and creates `deployer-token-v2`. Only the dev token changes. Merge the pull request, as in [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
 <!-- ui: merge_pr flightops/platform -->
 

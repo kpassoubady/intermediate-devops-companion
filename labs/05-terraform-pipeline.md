@@ -12,6 +12,7 @@
     - [2.3 Look at the stored state](#23-look-at-the-stored-state)
     - [2.4 Remove the local copy](#24-remove-the-local-copy)
     - [2.5 Commit the change](#25-commit-the-change)
+    - [2.6 Open and merge the pull request](#26-open-and-merge-the-pull-request)
   - [Part 3: A credential for the pipeline](#part-3-a-credential-for-the-pipeline)
     - [3.1 Why the pipeline gets its own credential](#31-why-the-pipeline-gets-its-own-credential)
     - [3.2 Write the kubeconfig](#32-write-the-kubeconfig)
@@ -38,7 +39,6 @@
   - [Troubleshooting](#troubleshooting)
   - [Going further (optional)](#going-further-optional)
   - [Summary](#summary)
-
 
 At the end of Lab 04, the Terraform state is a file on your lab machine.
 Nobody else can see it, nothing stops two people from changing it at the same time, and it contains database passwords.
@@ -390,6 +390,9 @@ branch 'store-tf-state' set up to track 'origin/store-tf-state'.
 > [!NOTE]
 > The `-u` option makes `origin/store-tf-state` the upstream of your local branch, so a later `git push` or `git pull` on this branch needs no arguments. The `remote:` lines in the output show the link for opening a pull request.
 
+
+### 2.6 Open and merge the pull request
+
 Harness shows a banner for the branch you just pushed. Select **Compare & pull request** (1).
 If the banner is not there, open **Repositories** > **platform** > **Pull Requests** > **New Pull Request**, and choose `store-tf-state` as the source branch and `main` as the target.
 
@@ -609,7 +612,7 @@ The steps share the workspace, so the providers that the plan step downloaded in
 
 ### 4.2 Commit and push
 
-Commit the pipeline on a branch, and merge it through a pull request, as in step 2.5.
+Commit the pipeline on a branch, and merge it through a pull request, as in steps 2.5 and 2.6.
 
 ```bash
 cd ~/platform
@@ -634,7 +637,7 @@ branch 'add-infra-pipeline' set up to track 'origin/add-infra-pipeline'.
 ```
 
 Open a pull request from `add-infra-pipeline` to `main`, and squash merge it.
-Follow the same steps as step 2.5, and refer to the screenshots in that step if you need them.
+Follow the same steps as step 2.6, and refer to the screenshots in that step if you need them.
 The pipeline does not exist in Harness yet, so this pull request does not start a run.
 > [!WARNING]
 > `git branch -D` deletes the branch even though Git does not see it as merged. Run it only after the pull request shows **Merged**.
@@ -821,7 +824,7 @@ To http://localhost:3000/git/flightops/platform.git
 branch 'raise-dev-pods' set up to track 'origin/raise-dev-pods'.
 ```
 
-Open a pull request from `raise-dev-pods` to `main`, as in step 2.5:
+Open a pull request from `raise-dev-pods` to `main`, as in step 2.6:
 
 1. In the Harness UI, open **Repositories** > **platform**. Select **Compare & pull request** in the banner for `raise-dev-pods`.
    If the banner is not there, open **Pull Requests** > **New Pull Request**, and choose `raise-dev-pods` as the source branch and `main` as the target.
@@ -829,7 +832,7 @@ Open a pull request from `raise-dev-pods` to `main`, as in step 2.5:
 3. Select **Create pull request**.
 
 Do not merge yet. You review the plan in step 5.3 first.
-The screenshots in step 2.5 show each screen if you need them.
+The screenshots in step 2.6 show each screen if you need them.
 
 <!-- ui: open_pr flightops/platform raise-dev-pods main "Allow 12 pods in dev" -->
 
@@ -873,13 +876,13 @@ Look for `-` (destroy) and `-/+` (replace) on objects that hold data.
 > [!IMPORTANT]
 > The merge starts the `apply` step, which changes the real cluster. Squash and merge only after you have read the plan in step 5.3 and it shows the change you expect.
 
-Merge the pull request as in step 2.5:
+Merge the pull request as in step 2.6:
 
 1. On the pull request page, open the **Conversation** tab and select **Squash and merge**.
 2. In the dialog, select **Confirm Squash and merge**.
 3. Check that the pull request shows **Merged**.
 
-The screenshots in step 2.5 show each screen if you need them.
+The screenshots in step 2.6 show each screen if you need them.
 
 <!-- ui: merge_pr flightops/platform -->
 

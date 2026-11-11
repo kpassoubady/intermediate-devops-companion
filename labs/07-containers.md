@@ -72,6 +72,9 @@ trivy_0.75.0_Linux-64bit.deb: OK
 
 `--ignore-missing` skips the lines for the files you did not download. The release also publishes a Sigstore signature for each file, in the `.sigstore.json` files next to it. Lecture L9 explains what a signature adds to a checksum.
 
+
+
+
 ### 1.2 Install the package
 
 `apt-get install` with the path to a `.deb` file installs that file, and any packages it needs from the Ubuntu repositories.
@@ -93,6 +96,15 @@ Version: 0.75.0
 trivy --version | grep -q "0.75.0"
 -->
 
+> [!NOTE]
+> During the install you may see this line:
+>
+> ```text
+> N: Download is performed unsandboxed as root as file '/home/training/downloads/trivy_0.75.0_Linux-64bit.deb' couldn't be accessed by user '_apt'. - pkgAcquire::Run (13: Permission denied)
+> ```
+>
+> Ignore it. It is a notice, not an error. apt normally reads packages as the unprivileged `_apt` user, which cannot open files in your home directory, so apt reads the file as root instead. The install still succeeds, as the version check above confirms.
+
 ## Part 2: Write the Dockerfile
 
 ### 2.1 Create a branch
@@ -102,6 +114,14 @@ Since Lab 03, the `main` branch only accepts changes through pull requests. Star
 ```bash
 cd ~/flight-status
 git switch -c feature/container
+```
+
+
+You will see an output as shown below:
+
+```text
+git switch -c feature/container
+Switched to a new branch 'feature/container'
 ```
 
 ### 2.2 What a Dockerfile contains
@@ -126,7 +146,14 @@ The table explains each instruction of the Dockerfile you are about to create.
 
 ### 2.3 Create the Dockerfile
 
-In VS Code (or the Text Editor), create the file `Dockerfile` (no file extension) in `~/flight-status` with this content and save it.
+
+```bash
+touch ~/flight-status/Dockerfile
+```
+
+
+In VS Code `~/flight-status` with the below content and save it in `Dockerfile` (no file extension).
+
 
 <!-- file: ~/flight-status/Dockerfile -->
 ```dockerfile
@@ -168,6 +195,12 @@ The image does not contain `requirements-dev.txt` or the tests. The image only n
 `docker build .` sends the whole directory to the builder. This directory is called the build context. The `.dockerignore` file lists paths to leave out of the build context. A short build context makes builds faster. It also keeps files such as `.git`, local virtual environments or a forgotten credentials file out of the image, even if a later `COPY` instruction is written too broadly.
 
 Create `~/flight-status/.dockerignore` with this content.
+
+```bash
+touch ~/flight-status/.dockerignore
+```
+
+In VS Code, copy and paste the below code in `~/flight-status/.dockerignore`.
 
 <!-- file: ~/flight-status/.dockerignore -->
 ```text
@@ -230,6 +263,7 @@ You should see six numbered steps, similar to this:
  => [5/6] COPY flightstatus/ flightstatus/
  => [6/6] RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin app
  => naming to docker.io/library/flight-status:1.0.0
+ => unpacking to docker.io/library/flight-status:1.0.0
 ```
 
 `ENV`, `ARG`, `EXPOSE`, `USER` and `CMD` do not appear as numbered steps. They change the image settings and add no files.
@@ -240,8 +274,28 @@ You should see six numbered steps, similar to this:
 
 ```bash
 docker image ls flight-status
+```
+
+The output will be:
+
+```text
+IMAGE                 ID             DISK USAGE   CONTENT SIZE   EXTRA
+flight-status:1.0.0   97ecbe9205c1        230MB         54.8MB        
+```
+
+```bash
 docker history flight-status:1.0.0
 ```
+
+The output will be:
+
+```text
+IMAGE          CREATED         CREATED BY                                      SIZE      COMMENT
+97ecbe9205c1   2 minutes ago   CMD ["uvicorn" "flightstatus.main:app" "--ho…   0B        buildkit.dockerfile.v0
+...
+...
+```
+
 
 `docker image ls` shows the image and its size. `docker history` lists the layers, newest first, with the instruction that created each one and the size it added. Find the `pip install` layer. It is the largest layer that your Dockerfile adds. The `COPY flightstatus/` layer adds only a few kilobytes. Most of the image size comes from the Debian and Python layers of the base image.
 
@@ -264,7 +318,17 @@ You should see:
 {"status":"ready","storage":"memory"}
 ```
 
+Open the same endpoints in a browser. In the address bar (1), enter `http://localhost:8000/version`. The JSON response (2) shows the version, commit, and environment.
+
+<img src="img/07-containers/browser-version.png" alt="Browser showing /version: (1) address bar URL, (2) JSON with version, commit, and environment">
+
+Next, enter `http://localhost:8000/ready` in the address bar (1). The JSON response (2) shows the `status` and `storage` values.
+
+<img src="img/07-containers/browser-ready.png" alt="Browser showing /ready: (1) address bar URL, (2) JSON with status and storage">
+
 The version and commit come from the build arguments, which the Dockerfile stored as environment variables. The same image can run in any environment. Settings that differ between environments, such as `APP_ENV` and `DATABASE_URL`, come from outside the image when the container starts.
+
+
 
 <!-- test
 curl -s http://localhost:8000/version | jq -e '.version == "1.0.0"' > /dev/null
@@ -290,12 +354,20 @@ INFO:     Started server process [1]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+...
+...
 ```
 
 `Started server process [1]` confirms that uvicorn runs as process 1, as described in step 2.2. Remove the container when you are done.
 
 ```bash
 docker rm -f flights
+```
+
+You will see
+
+```text
+flights
 ```
 
 ### 3.5 See the build cache at work
@@ -312,11 +384,17 @@ docker image rm flight-status:cache-demo
 In the build output, look for lines like these:
 
 ```text
+...
+...
  => CACHED [2/6] WORKDIR /app
  => CACHED [3/6] COPY requirements.txt .
  => CACHED [4/6] RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
  => [5/6] COPY flightstatus/ flightstatus/
  => [6/6] RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin app
+ ...
+ ...
+Untagged: flight-status:cache-demo
+Deleted: sha256:768b97d4dc557310...
 ```
 
 The dependency layer is `CACHED`, so the build takes seconds instead of the time pip needs to download and install the packages. A pipeline that builds on every commit benefits from the same order of instructions.
@@ -332,6 +410,14 @@ docker tag flight-status:1.0.0 k3d-registry.localhost:5000/flight-status:1.0.0
 docker image ls | grep flight-status
 ```
 
+The output will be:
+
+```text
+flight-status:1.0.0                               97ecbe9205c1        230MB         54.8MB        
+k3d-registry.localhost:5000/flight-status:1.0.0   97ecbe9205c1        230MB         54.8MB
+```
+
+
 Both names show the same image ID.
 
 ### 4.2 Push the image
@@ -346,10 +432,18 @@ curl -s http://k3d-registry.localhost:5000/v2/flight-status/tags/list; echo
 You should see:
 
 ```text
+The push refers to repository [k3d-registry.localhost:5000/flight-status]
+...
+...
+1.0.0: digest: sha256:97ecbe9205c136cbea0beead4ed425f37638809a143a69a695ac1726307f056f size: 85
 {"name":"flight-status","tags":["1.0.0"]}
 ```
 
-The second command calls the registry's HTTP API. Docker, Kubernetes and Trivy use the same API to push and pull images.
+The second command calls the registry's HTTP API. To see the same response in a browser, enter `http://k3d-registry.localhost:5000/v2/flight-status/tags/list` in the address bar (1). The JSON response (2) lists the tags in the repository.
+
+<img src="img/07-containers/browser-tag-list.png" alt="Browser showing the registry tag list: (1) address bar URL, (2) tags array with 1.0.0">
+
+Docker, Kubernetes and Trivy use the same API to push and pull images.
 
 <!-- test
 curl -s http://k3d-registry.localhost:5000/v2/flight-status/tags/list | jq -e '.tags | index("1.0.0")' > /dev/null
@@ -402,17 +496,24 @@ Each row has these columns:
 
 Each section ends with a line such as `Total: 3 (HIGH: 3, CRITICAL: 0)`. New CVEs are published every day, so your numbers depend on the day you scan. Two people who scan the same image on the same day see the same result.
 
+The summary table lists each target on its own row. The row for `flight-status:1.0.0 (debian 13.7)` counts the vulnerabilities in the base image. The rows below it count the vulnerabilities in each Python package. Your counts depend on the day you scan.
+
+<img src="img/07-containers/trivy-partial-report-summary.png" alt="Trivy report summary: one row per target, Debian base image with 49 vulnerabilities, Python packages with 0">
+
 ### 5.2 Decide what blocks a release
 
 A finding with status `fixed` is something you can act on: rebuild on a newer base image or update the library. A finding without a fix gives you nothing to do except accept it or remove the package. A rule that blocks every release with an unfixable finding stops delivery without making the service safer. The pipeline in Lab 09 uses this rule: fail only on CRITICAL findings that have a fix. `--exit-code 1` makes Trivy return a non-zero exit code when it finds a matching vulnerability. A pipeline step fails on a non-zero exit code.
 
 ```bash
-trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 --quiet flight-status:1.0.0 \
+mkdir -p ~/flight-status/output
+{ trivy image --severity CRITICAL --ignore-unfixed --exit-code 1 --quiet flight-status:1.0.0 \
   && echo "Check passed: no fixable critical vulnerabilities." \
   || echo "Check failed: fixable critical vulnerabilities found. Rebuild on a newer base image."
+} | tee ~/flight-status/output/trivy-report-critical.txt
 ```
 
-Write down the result. You see the same check in the pipeline log in Lab 09.
+The results are in `~/flight-status/output/trivy-report-critical.txt`. 
+You see the same check in the pipeline log in Lab 09.
 
 ### 5.3 Create a software bill of materials
 
@@ -427,6 +528,8 @@ grep -o 'pkg:pypi/[^"]*' ~/flight-status-1.0.0.cdx.json | sort -u
 The first `jq` command prints the number of components. The `grep` command lists the Python packages as package URLs (purls), a standard way to name a package and its version. You should see lines such as these:
 
 ```text
+...
+...
 pkg:pypi/fastapi@0.162.0
 pkg:pypi/psycopg@3.3.6
 pkg:pypi/uvicorn@0.54.0
@@ -455,7 +558,13 @@ A real service rarely runs alone. The flight status service needs PostgreSQL. Do
 
 The database password is in the file. That is acceptable for a throwaway database on your machine, and it is the same test password the pipeline uses. Part 7 shows how a production task receives the real password instead.
 
-Create `~/flight-status/compose.yaml` with this content.
+Create `~/flight-status/compose.yaml` file.
+
+```bash
+touch ~/flight-status/compose.yaml
+```
+
+In VSCode Copy and paste the below content in `~/flight-status/compose.yaml`.
 
 <!-- file: ~/flight-status/compose.yaml -->
 ```yaml
@@ -509,6 +618,8 @@ docker compose ps
 You should see both services with the status `(healthy)`:
 
 ```text
+...
+...
 NAME                 IMAGE                                            SERVICE   STATUS
 flight-status-app-1  k3d-registry.localhost:5000/flight-status:1.0.0  app       Up 20 seconds (healthy)
 flight-status-db-1   postgres:17-alpine                               db        Up 26 seconds (healthy)
@@ -547,6 +658,16 @@ docker compose up -d --wait
 curl -s http://localhost:8000/flights/UA900; echo
 ```
 
+You will see:
+```text
+...
+ ⠧ Container flight-status-app-1 Restarting                                                                               0.7s
+[+] up 2/2
+ ✔ Container flight-status-app-1 Healthy                                                                                 10.5s
+ ✔ Container flight-status-db-1  Healthy                                                                                  0.5s
+{"number":"UA900","origin":"ORD","destination":"LHR","departure":"2026-11-02T18:00:00Z","status":"SCHEDULED","gate":"C18","delay_minutes":0}
+```
+
 The flight is still there. A container you can stop and replace at any time is called stateless. Kubernetes and ECS replace containers often, so this property matters in Lab 08. The Twelve-Factor App describes the same idea: processes are stateless, and data that must persist goes to a backing service such as a database.
 
 <!-- test
@@ -560,6 +681,17 @@ curl -s http://localhost:8000/flights/UA900 | jq -e '.destination == "LHR"' > /d
 ```bash
 docker compose down -v
 docker volume ls | grep db-data || echo "The db-data volume is gone."
+```
+
+Output will be:
+
+```text
+...
+ ✔ Container flight-status-app-1 Removed                                                                                  0.5s
+ ✔ Container flight-status-db-1  Removed                                                                                  0.2s
+ ✔ Volume flight-status_db-data  Removed                                                                                  0.0s
+ ✔ Network flight-status_default Removed                                                                                  0.1s
+The db-data volume is gone.
 ```
 
 <!-- test
@@ -591,21 +723,32 @@ The account number `111122223333` is the example account that AWS uses in its do
 
 ### 7.2 Your turn: write the task definition
 
-Create the folder for the file:
+Create the file `~/flight-status/ecs/taskdef.json`:
 
 ```bash
-mkdir -p ecs
+mkdir -p ~/flight-status/ecs
+touch ~/flight-status/ecs/taskdef.json
 ```
 
-Create `~/flight-status/ecs/taskdef.json`. Start from this outline and replace each `TODO` with a value, using the table above and your `compose.yaml`.
+Open the file, paste the text below, and replace the five `TODO` values. The rest is already filled in for you.
+
+| Replace | What goes there |
+|---|---|
+| `TODO-cpu` | 0.5 vCPU in CPU units. 1 vCPU is 1024 units. |
+| `TODO-memory` | 1 GB in MiB. 1 GB is 1024 MiB. |
+| `TODO-image` | The ECR image for version `1.0.0`. The table above shows the format. |
+| `TODO-port` | The port the app listens on, as in `compose.yaml`. |
+| `TODO-env` | The value of `APP_ENV` for production. |
+
+Put text values in double quotes, such as `"512"`. Write the port as a plain number.
 
 ```json
 {
   "family": "flight-status",
   "requiresCompatibilities": ["FARGATE"],
   "networkMode": "awsvpc",
-  "cpu": "TODO: 0.5 vCPU, in CPU units",
-  "memory": "TODO: 1 GB, in MiB",
+  "cpu": TODO-cpu,
+  "memory": TODO-memory,
   "runtimePlatform": {
     "operatingSystemFamily": "LINUX",
     "cpuArchitecture": "X86_64"
@@ -615,19 +758,41 @@ Create `~/flight-status/ecs/taskdef.json`. Start from this outline and replace e
   "containerDefinitions": [
     {
       "name": "app",
-      "image": "TODO: the ECR image for version 1.0.0",
+      "image": TODO-image,
       "essential": true,
-      "portMappings": ["TODO: container port 8000, protocol tcp"],
-      "environment": ["TODO: APP_ENV set to production"],
-      "secrets": ["TODO: DATABASE_URL from arn:aws:secretsmanager:us-east-1:111122223333:secret:flight-status/database-url"],
-      "healthCheck": "TODO: the same check as in compose.yaml, with interval 10, timeout 3, retries 3, startPeriod 10",
-      "logConfiguration": "TODO: awslogs driver, group /ecs/flight-status, region us-east-1, stream prefix app"
+      "portMappings": [
+        { "containerPort": TODO-port, "protocol": "tcp" }
+      ],
+      "environment": [
+        { "name": "APP_ENV", "value": TODO-env }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:111122223333:secret:flight-status/database-url"
+        }
+      ],
+      "healthCheck": {
+        "command": ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"],
+        "interval": 10,
+        "timeout": 3,
+        "retries": 3,
+        "startPeriod": 10
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/flight-status",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "app"
+        }
+      }
     }
   ]
 }
 ```
 
-`runtimePlatform` tells Fargate which operating system and CPU architecture the image needs. Your image was built on an x86-64 machine.
+The `healthCheck` is the same check you wrote in `compose.yaml`. The `secrets` entry tells ECS to read the database URL from AWS Secrets Manager, so the password is never written in this file. `runtimePlatform` tells Fargate which operating system and CPU type the image needs.
 
 <details>
 <summary>Show the answer</summary>
@@ -717,32 +882,41 @@ jq -e '.cpu == "512" and .memory == "1024" and .containerDefinitions[0].secrets[
 cd ~/flight-status
 git add Dockerfile .dockerignore compose.yaml ecs/taskdef.json
 git status --short
-git commit -m "Add container image, Compose file and ECS task definition"
+git commit -m "Add container build files"
 git push -u origin feature/container
 ```
 
 `git status --short` should list four new files:
 
 ```text
+...
 A  .dockerignore
 A  Dockerfile
 A  compose.yaml
 A  ecs/taskdef.json
+...
+...
+remote: 
+remote: Create a pull request for "feature/container" by visiting:
+remote:   http://localhost:3000/flightops/flight-status/pulls/compare/main...feature/container
+remote: 
+To http://localhost:3000/git/flightops/flight-status.git
+ * [new branch]      feature/container -> feature/container
+branch 'feature/container' set up to track 'origin/feature/container'.
 ```
 
 The SBOM is in your home directory, not in the repository, so it is not part of the commit.
 
 ### 8.2 Open and merge the pull request
 
-In Harness, open the **flight-status** repository and select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/container` as the source branch. Enter the title `Add container build files` and create the pull request.
+On the **flight-status** page (1), Harness shows a banner for the branch you just pushed (2). Select **Compare & pull request** (3).
 
+<img src="img/07-containers/container-pr.png" alt="flight-status repository page: (1) repository name in the breadcrumb, (2) banner You pushed to feature/container, (3) Compare & pull request button">
 
-<!-- shots:begin -->
-<img src="img/07-containers/01-open_pr-1.png" alt="Open the pull request, step 1 of 2">
+If the banner is not there, select **Pull Requests**, then **New Pull Request**. Choose `main` as the target branch and `feature/container` as the source branch. Create the pull request.
 
-<img src="img/07-containers/01-open_pr-2.png" alt="Open the pull request, step 2 of 2">
+For more screenshots of opening a pull request, see [Lab 05, section 2.6](05-terraform-pipeline.md#26-open-and-merge-the-pull-request).
 
-<!-- shots:end -->
 
 <!-- ui: open_pr flightops/flight-status feature/container main "Add container build files" -->
 
@@ -756,9 +930,13 @@ Review the files in the pull request, then merge it with **Squash and merge** an
 
 
 <!-- shots:begin -->
-<img src="img/07-containers/02-merge_pr-1.png" alt="Merge the pull request, step 1 of 2">
+On the pull request page, check that the **Checks** tab (1) shows the `ci` check passed. Then select **Squash and merge** (2).
 
-<img src="img/07-containers/02-merge_pr-2.png" alt="Merge the pull request, step 2 of 2">
+<img src="img/07-containers/container-squash-merge.png" alt="Pull request page: (1) Checks tab with one passing check, (2) Squash and merge button">
+
+In the dialog, select **Confirm Squash and merge**.
+
+<img src="img/07-containers/02-merge_pr-2.png" alt="Squash and merge dialog with the Confirm Squash and merge button">
 
 <!-- shots:end -->
 
