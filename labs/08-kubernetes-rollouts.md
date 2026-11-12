@@ -1036,6 +1036,15 @@ h_get http://flights-dev.localhost:8080/version | jq -e '.version == "1.1.0"' > 
 
 - **`namespaces "flightops-dev" not found`**: the Terraform from Lab 04 has not run against this cluster. Run `terraform apply` in `~/platform`, or use the catch-up script.
 - **Pods stay in `CreateContainerConfigError`**: the Secret `flight-status-db` or the generated ConfigMap is missing. Check with `kubectl -n flightops-dev get secret,configmap`. Terraform creates the Secret.
+- **Pods in `CrashLoopBackOff`, and `kubectl logs --previous` shows `password authentication failed for user "flights"`**: the password in the Secret `flight-status-db` differs from the one PostgreSQL uses. This happens when `terraform apply` generated a new password, for example after answering `yes` at the lock demo in Lab 05. PostgreSQL only reads `POSTGRES_PASSWORD` when it first creates its data, so it keeps the old password. Set the database password to the one in the Secret, then restart the Deployment:
+
+  ```bash
+  PW=$(kubectl -n flightops-dev get secret flight-status-db -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d)
+  kubectl -n flightops-dev exec deploy/postgres -- psql -U flights -d flights -c "ALTER USER flights PASSWORD '$PW'"
+  kubectl -n flightops-dev rollout restart deployment/flight-status
+  kubectl -n flightops-dev rollout status deployment/flight-status --timeout=120s
+  ```
+
 - **`ErrImagePull` for version 1.0.0 or 1.1.0**: the image is not in the registry. Check with `curl -s http://k3d-registry.localhost:5000/v2/flight-status/tags/list` and push it again.
 - **`Error: container has runAsNonRoot and image will run as root`**: the image was built without the `USER 10001` line. Rebuild it from the Lab 07 Dockerfile.
 - **`curl http://flights-dev.localhost:8080` returns `404 page not found`**: the host name in the request does not match the Ingress, or the Ingress does not exist. Check `kubectl -n flightops-dev get ingress`.

@@ -1089,6 +1089,9 @@ Lock Info:
 
 Then answer `no` in the first terminal. The lock is released.
 
+> [!WARNING]
+> Do not answer `yes`. The apply would generate a new dev database password and write it to the Secret `flight-status-db`, but the running PostgreSQL keeps the old password. In Lab 08 the flight status pods then fail with `password authentication failed for user "flights"`. If it already happened, see the Troubleshooting section of Lab 08.
+
 The pipeline uses `-lock-timeout=60s`, so a run that starts while another run holds the lock waits up to a minute instead of failing at once.
 `terraform force-unlock <ID>` removes a lock by hand. Use it only when you know that the run that took the lock has stopped.
 
